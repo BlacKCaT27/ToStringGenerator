@@ -10,6 +10,8 @@ namespace Bcss.ToStringGenerator.Generators
     {
         private const string DefaultRedactionValue = "[REDACTED]";
         private const string ConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
+        private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
+        private const string SensitiveDataAttributeName = "Bcss.ToStringGenerator.Attributes.SensitiveDataAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -19,25 +21,7 @@ namespace Bcss.ToStringGenerator.Generators
 
             context.RegisterSourceOutput(
                 combined.Combine(context.CompilationProvider),
-                (spc, tuple) => 
-                {
-                    // Add diagnostic logging for each type being processed
-                    if (tuple.Left.Type != null)
-                    {
-                        var typeSymbol = tuple.Right.GetSemanticModel(tuple.Left.Type.SyntaxTree)
-                            .GetDeclaredSymbol(tuple.Left.Type);
-                        if (typeSymbol != null)
-                        {
-                            var attributes = typeSymbol.GetAttributes();
-                            var attributeNames = string.Join(", ", attributes.Select(a => a.AttributeClass?.ToDisplayString()));
-                            spc.AddSource($"AttributeDetection_{typeSymbol.Name}.g.cs", 
-                                $"// Class: {typeSymbol.Name}\n" +
-                                $"// Attributes: {attributeNames}\n" +
-                                $"// Has GenerateToString: {attributes.Any(attr => attr.AttributeClass?.ToDisplayString() == "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute")}");
-                        }
-                    }
-                    Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type, tuple.Right!);
-                });
+                (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type, tuple.Right!));
         }
 
         private static IncrementalValueProvider<string> GetDefaultRedactionConfig(IncrementalGeneratorInitializationContext context)
@@ -64,15 +48,14 @@ namespace Bcss.ToStringGenerator.Generators
 
         private static TypeDeclarationSyntax? GetTypeWithGenerateToStringAttribute(GeneratorSyntaxContext ctx)
         {
-            var typeDeclaration = ctx.Node as TypeDeclarationSyntax;
-            if (typeDeclaration == null) return null;
+            if (ctx.Node is not ClassDeclarationSyntax typeDeclaration) return null;
 
             var semanticModel = ctx.SemanticModel;
             var typeSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration);
             if (typeSymbol == null) return null;
 
             return typeSymbol.GetAttributes()
-                .Any(attr => attr.AttributeClass?.ToDisplayString() == "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute")
+                .Any(attr => attr.AttributeClass?.ToDisplayString() == GenerateToStringAttributeName)
                 ? typeDeclaration
                 : null;
         }
@@ -183,7 +166,7 @@ namespace Bcss.ToStringGenerator.Generators
                 sourceBuilder.AppendLine($"        sb.Append(\"{separator}{memberName} = \");");
 
                 var sensitiveDataAttr = member.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "Bcss.ToStringGenerator.Attributes.SensitiveDataAttribute");
+                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == SensitiveDataAttributeName);
 
                 if (sensitiveDataAttr == null)
                 {
@@ -241,11 +224,11 @@ namespace Bcss.ToStringGenerator.Generators
             var metadataName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             
             // Check if it's a Dictionary<TKey,TValue> or IDictionary<TKey,TValue>
-            return metadataName.StartsWith("Dictionary<") ||
-                   metadataName.StartsWith("IDictionary<") ||
+            return metadataName.StartsWith("Dictionary<", StringComparison.Ordinal) ||
+                   metadataName.StartsWith("IDictionary<", StringComparison.Ordinal) ||
                    type.AllInterfaces.Any(i => 
                        i.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                        .StartsWith("IDictionary<"));
+                        .StartsWith("IDictionary<", StringComparison.Ordinal));
         }
 
         private static bool IsEnumerable(ITypeSymbol type, Compilation compilation)
@@ -263,8 +246,8 @@ namespace Bcss.ToStringGenerator.Generators
 
             // Check if the type implements IEnumerable<T> or IEnumerable
             return type.AllInterfaces.Any(i => 
-                i.OriginalDefinition.Equals(genericEnumerable, SymbolEqualityComparer.Default) ||
-                i.OriginalDefinition.Equals(nonGenericEnumerable, SymbolEqualityComparer.Default));
+                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericEnumerable) ||
+                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable));
         }
 
         private static bool IsNullableType(ITypeSymbol type)
@@ -276,12 +259,7 @@ namespace Bcss.ToStringGenerator.Generators
             }
 
             // Check if it's a reference type with nullable annotation
-            if (type.IsReferenceType)
-            {
-                return type.NullableAnnotation == NullableAnnotation.Annotated;
-            }
-
-            return false;
+            return type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated;
         }
 
         private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, ITypeSymbol type)
@@ -305,29 +283,29 @@ namespace Bcss.ToStringGenerator.Generators
 
         private static void AppendDictionaryContents(StringBuilder sourceBuilder, string memberName)
         {
-            sourceBuilder.AppendLine("            sb.Append(\"[\");");
+            sourceBuilder.AppendLine("            sb.Append('[');");
             sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
             sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("            {");
             sourceBuilder.AppendLine($"                var pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                sb.Append(\"{\");");
+            sourceBuilder.AppendLine("                sb.Append('{');");
             sourceBuilder.AppendLine("                sb.Append(pair.Key.ToString());");
             sourceBuilder.AppendLine("                sb.Append(\" = \");");
             sourceBuilder.AppendLine("                sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                sb.Append(\"}\");");
+            sourceBuilder.AppendLine("                sb.Append('}');");
             sourceBuilder.AppendLine();
             sourceBuilder.AppendLine($"                while ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("                {");
             sourceBuilder.AppendLine("                    sb.Append(\", \");");
             sourceBuilder.AppendLine($"                    pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                    sb.Append(\"{\");");
+            sourceBuilder.AppendLine("                    sb.Append('{');");
             sourceBuilder.AppendLine("                    sb.Append(pair.Key.ToString());");
             sourceBuilder.AppendLine("                    sb.Append(\" = \");");
             sourceBuilder.AppendLine("                    sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append(\"}\");");
+            sourceBuilder.AppendLine("                    sb.Append('}');");
             sourceBuilder.AppendLine("                }");
             sourceBuilder.AppendLine("            }");
-            sourceBuilder.AppendLine("            sb.Append(\"]\");");
+            sourceBuilder.AppendLine("            sb.Append(']');");
         }
 
         private static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, ITypeSymbol type)
@@ -351,7 +329,7 @@ namespace Bcss.ToStringGenerator.Generators
 
         private static void AppendEnumerableContents(StringBuilder sourceBuilder, string memberName)
         {
-            sourceBuilder.AppendLine("            sb.Append(\"[\");");
+            sourceBuilder.AppendLine("            sb.Append('[');");
             sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
             sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("            {");
@@ -363,7 +341,7 @@ namespace Bcss.ToStringGenerator.Generators
             sourceBuilder.AppendLine($"                    sb.Append({memberName}Enumerator.Current.ToString());");
             sourceBuilder.AppendLine("                }");
             sourceBuilder.AppendLine("            }");
-            sourceBuilder.AppendLine("            sb.Append(\"]\");");
+            sourceBuilder.AppendLine("            sb.Append(']');");
         }
 
         private static string GetRedactionValue(ISymbol member, string defaultRedactionValue)
