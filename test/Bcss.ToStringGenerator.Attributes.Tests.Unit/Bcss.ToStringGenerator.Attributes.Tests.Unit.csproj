@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Analyzer Include="..\..\src\Bcss.ToStringGenerator.Generators\bin\Debug\netstandard2.0\Bcss.ToStringGenerator.Generators.dll" />
+        <Analyzer Include="..\..\src\Bcss.ToStringGenerator\bin\Debug\netstandard2.0\Bcss.ToStringGenerator.dll" />
     </ItemGroup>
 
     <Target Name="ForceSourceGenerator" BeforeTargets="CoreCompile">

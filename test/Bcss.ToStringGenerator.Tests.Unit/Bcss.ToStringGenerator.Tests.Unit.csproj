@@ -8,6 +8,7 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <RootNamespace>Bcss.ToStringGenerator.Tests.Unit</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,11 +26,7 @@
     </ItemGroup>
 
    <ItemGroup>
-        <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Generators\Bcss.ToStringGenerator.Generators.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Analyzer Include="..\..\src\Bcss.ToStringGenerator.Generators\bin\Debug\netstandard2.0\Bcss.ToStringGenerator.Generators.dll" />
+        <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer"/>
     </ItemGroup>
 
 </Project>

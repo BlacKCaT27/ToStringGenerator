@@ -1,10 +1,11 @@
 using System.Text;
 using Bcss.ToStringGenerator.Attributes;
+using Bcss.ToStringGenerator.Generators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Bcss.ToStringGenerator.Generators.Tests.Unit
+namespace Bcss.ToStringGenerator.Tests.Unit
 {
     [TestClass]
     public class ClassToStringGeneratorTests

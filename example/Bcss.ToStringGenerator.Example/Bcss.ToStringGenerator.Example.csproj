@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Generators\Bcss.ToStringGenerator.Generators.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
+    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
   </ItemGroup>
 
   <PropertyGroup>
