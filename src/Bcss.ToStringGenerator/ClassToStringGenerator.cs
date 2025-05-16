@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
 
@@ -21,7 +20,7 @@ namespace Bcss.ToStringGenerator.Generators
 
             context.RegisterSourceOutput(
                 combined.Combine(context.CompilationProvider),
-                (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type, tuple.Right!));
+                (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type));
         }
 
         private static IncrementalValueProvider<string> GetDefaultRedactionConfig(IncrementalGeneratorInitializationContext context)
@@ -38,108 +37,166 @@ namespace Bcss.ToStringGenerator.Generators
                 });
         }
 
-        private static IncrementalValuesProvider<TypeDeclarationSyntax?> GetTypeDeclarations(IncrementalGeneratorInitializationContext context)
+        private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarations(IncrementalGeneratorInitializationContext context)
         {
             return context.SyntaxProvider
-                .CreateSyntaxProvider(
+                .ForAttributeWithMetadataName(
+                    GenerateToStringAttributeName,
                     predicate: (node, _) => node is ClassDeclarationSyntax,
                     transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx));
         }
 
-        private static TypeDeclarationSyntax? GetTypeWithGenerateToStringAttribute(GeneratorSyntaxContext ctx)
+        private static ClassSymbolData? GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
         {
-            if (ctx.Node is not ClassDeclarationSyntax typeDeclaration) return null;
-
-            var semanticModel = ctx.SemanticModel;
-            var typeSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration);
-            if (typeSymbol == null) return null;
-
-            return typeSymbol.GetAttributes()
+            var targetNode = ctx.Attributes
                 .Any(attr => attr.AttributeClass?.ToDisplayString() == GenerateToStringAttributeName)
-                ? typeDeclaration
+                ? ctx.TargetNode
                 : null;
+
+            if (targetNode is null) return null;
+
+            var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(targetNode);
+            if (typeSymbol is null) return null;
+            
+            string containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
+            string classAccessibility = GetAccessibility(typeSymbol);
+            string className = typeSymbol.Name;
+            var memberSymbols = GetPublicMembers(typeSymbol);
+            var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
+
+            return new ClassSymbolData(containingNamespace, classAccessibility, className, members);
         }
 
-        private static IncrementalValueProvider<(TypeDeclarationSyntax? Type, string DefaultRedaction)> CombineProviders(
-            IncrementalValuesProvider<TypeDeclarationSyntax?> typeDeclarations,
+        private static List<MemberSymbolData> GetMemberSymbolData(IEnumerable<ISymbol> memberSymbols, Compilation compilation)
+        {
+            List<MemberSymbolData> result = [];
+
+            foreach (var memberSymbol in memberSymbols)
+            {
+                var memberType = GetMemberType(memberSymbol);
+                var (isSensitive, mask) = IsSensitive(memberSymbol);
+                result.Add(new MemberSymbolData(
+                    memberSymbol.Name,
+                    IsDictionary(memberType, compilation),
+                    IsEnumerable(memberType, compilation),
+                    IsNullableType(memberSymbol.ContainingType),
+                    isSensitive,
+                    mask));
+            }
+
+            return result;
+        }
+        
+        private static ITypeSymbol GetMemberType(ISymbol member)
+        {
+            return member switch
+            {
+                IPropertySymbol property => property.Type,
+                IFieldSymbol field => field.Type,
+                _ => throw new ArgumentException($"Unexpected member type: {member.GetType()}")
+            };
+        }
+
+        private static string GetAccessibility(ISymbol typeSymbol)
+        {
+            return typeSymbol.DeclaredAccessibility switch
+            {
+                Accessibility.Public => "public",
+                Accessibility.Internal => "internal",
+                Accessibility.Protected => "protected",
+                Accessibility.ProtectedOrInternal => "protected internal",
+                Accessibility.ProtectedAndInternal => "private protected",
+                _ => "private"
+            };
+        }
+
+        private static (bool, string?) IsSensitive(ISymbol symbol)
+        {
+            var sensitiveDataAttr = symbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == SensitiveDataAttributeName);
+
+            if (sensitiveDataAttr is not null)
+            {
+                return (true, GetCustomRedactionValue(symbol));
+            }
+
+            return (false, null);
+        }
+        
+        private static string? GetCustomRedactionValue(ISymbol member)
+        {
+            var attributeSyntax = member.DeclaringSyntaxReferences
+                .SelectMany(r => r.GetSyntax().DescendantNodes())
+                .OfType<AttributeSyntax>()
+                .FirstOrDefault(a => a.Name.ToString().Contains("SensitiveData"));
+
+            if (attributeSyntax?.ArgumentList?.Arguments.Count > 0)
+            {
+                var arg = attributeSyntax.ArgumentList.Arguments[0];
+                if (arg.Expression is LiteralExpressionSyntax literal)
+                {
+                    return literal.Token.ValueText;
+                }
+            }
+
+            return null;
+        }
+
+        private static IncrementalValueProvider<(ClassSymbolData? Type, string DefaultRedaction)> CombineProviders(
+            IncrementalValuesProvider<ClassSymbolData?> typeDeclarations,
             IncrementalValueProvider<string> defaultRedactionConfig)
         {
             return typeDeclarations
                 .Collect()
-                .Select((nodes, _) => nodes[0])
+                .Select((nodes, _) => nodes.FirstOrDefault())
                 .Combine(defaultRedactionConfig);
         }
 
-        private static void Execute(SourceProductionContext context, string defaultRedactionValue, TypeDeclarationSyntax? typeDeclaration, Compilation compilation)
+        private static void Execute(SourceProductionContext context, string defaultRedactionValue, ClassSymbolData? classSymbolData)
         {
-            if (typeDeclaration == null) return;
+            if (!classSymbolData.HasValue) return;
 
-            var semanticModel = compilation.GetSemanticModel(typeDeclaration.SyntaxTree);
-            var typeSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration);
-
-            if (typeSymbol == null) return;
-
-            var sourceCode = GenerateToStringMethod(typeSymbol, defaultRedactionValue, compilation);
-            var fileName = $"{typeSymbol.Name}.ToString.g.cs";
+            var sourceCode = GenerateToStringMethod(classSymbolData.Value, defaultRedactionValue);
+            var fileName = $"{classSymbolData.Value.ClassName}.ToString.g.cs";
 
             context.CancellationToken.ThrowIfCancellationRequested();
             context.AddSource(fileName, sourceCode);
         }
 
-        private static string GenerateToStringMethod(ISymbol typeSymbol, string defaultRedactionValue, Compilation compilation)
+        private static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)
         {
             var sourceBuilder = new StringBuilder();
-            AddUsingsAndNamespace(sourceBuilder, typeSymbol);
-            AddTypeDeclaration(sourceBuilder, typeSymbol);
-            AddToStringMethod(sourceBuilder, typeSymbol, defaultRedactionValue, compilation);
+            AddUsingsAndNamespace(sourceBuilder, classSymbolData.ContainingNamespace);
+            AddTypeDeclaration(sourceBuilder, classSymbolData.ClassAccessibility, classSymbolData.ClassName);
+            AddToStringMethod(sourceBuilder, classSymbolData, defaultRedactionValue);
             return sourceBuilder.ToString();
         }
 
-        private static void AddUsingsAndNamespace(StringBuilder sourceBuilder, ISymbol typeSymbol)
+        private static void AddUsingsAndNamespace(StringBuilder sourceBuilder, string namespaceName)
         {
             sourceBuilder.AppendLine("using System;");
             sourceBuilder.AppendLine("using System.Text;");
             sourceBuilder.AppendLine("using System.Collections.Generic;");
             sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"namespace {typeSymbol.ContainingNamespace};");
+            sourceBuilder.AppendLine($"namespace {namespaceName};");
             sourceBuilder.AppendLine();
         }
 
-        private static void AddTypeDeclaration(StringBuilder sourceBuilder, ISymbol typeSymbol)
+        private static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className)
         {
-            var accessModifier = typeSymbol.DeclaredAccessibility switch
-            {
-                Accessibility.Public => "public",
-                Accessibility.Internal => "internal",
-                Accessibility.Protected => "protected",
-                Accessibility.ProtectedOrInternal => "protected internal",
-                Accessibility.ProtectedAndInternal => "private protected",
-                _ => "private"
-            };
-            sourceBuilder.AppendLine($"{accessModifier} partial class {typeSymbol.Name}");
+            sourceBuilder.AppendLine($"{classAccessibility} partial class {className}");
             sourceBuilder.AppendLine("{");
         }
 
-        private static void AddToStringMethod(StringBuilder sourceBuilder, ISymbol typeSymbol, string defaultRedactionValue, Compilation compilation)
+        private static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, string defaultRedactionValue)
         {
-            var accessModifier = typeSymbol.DeclaredAccessibility switch
-            {
-                Accessibility.Public => "public",
-                Accessibility.Internal => "internal",
-                Accessibility.Protected => "protected",
-                Accessibility.ProtectedOrInternal => "protected internal",
-                Accessibility.ProtectedAndInternal => "private protected",
-                _ => "private"
-            };
-
-            sourceBuilder.AppendLine($"    {accessModifier} override string ToString()");
+            sourceBuilder.AppendLine($"   public override string ToString()");
             sourceBuilder.AppendLine("    {");
             sourceBuilder.AppendLine("        var sb = new StringBuilder();");
-            sourceBuilder.AppendLine($"        sb.Append(\"[{typeSymbol.Name}: \");");
+            sourceBuilder.AppendLine($"        sb.Append(\"[{classSymbolData.ClassName}: \");");
             sourceBuilder.AppendLine();
 
-            var members = GetPublicMembers(typeSymbol);
-            AppendMembers(sourceBuilder, members, defaultRedactionValue, compilation);
+            AppendMembers(sourceBuilder, classSymbolData.Members, defaultRedactionValue);
 
             sourceBuilder.AppendLine();
             sourceBuilder.AppendLine("        sb.Append(\"]\");");
@@ -151,37 +208,36 @@ namespace Bcss.ToStringGenerator.Generators
         private static IEnumerable<ISymbol> GetPublicMembers(ISymbol typeSymbol)
         {
             return ((INamespaceOrTypeSymbol)typeSymbol).GetMembers()
-                .Where(m => (m.Kind == SymbolKind.Property || m.Kind == SymbolKind.Field) &&
-                           m.DeclaredAccessibility == Accessibility.Public &&
-                           !m.IsStatic);
+                .Where(m => m.Kind is SymbolKind.Property or SymbolKind.Field &&
+                            m is { DeclaredAccessibility: Accessibility.Public, IsStatic: false });
         }
 
-        private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<ISymbol> members, string defaultRedactionValue, Compilation compilation)
+        private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, string defaultRedactionValue)
         {
             var firstMember = true;
             foreach (var member in members)
             {
-                var memberName = member.Name;
+                var memberName = member.MemberName;
                 var separator = firstMember ? "" : ", ";
                 sourceBuilder.AppendLine($"        sb.Append(\"{separator}{memberName} = \");");
 
-                var sensitiveDataAttr = member.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == SensitiveDataAttributeName);
-
-                if (sensitiveDataAttr == null)
+                if (member.IsSensitive)
                 {
-                    var memberType = GetMemberType(member);
-                    if (IsDictionary(memberType))
+                    sourceBuilder.AppendLine($"        sb.Append(\"{member.Mask ?? defaultRedactionValue}\");");
+                }
+                else
+                {
+                    if (member.IsDictionary)
                     {
-                        AppendDictionaryValue(sourceBuilder, memberName, memberType);
+                        AppendDictionaryValue(sourceBuilder, memberName, member.IsNullableType);
                     }
-                    else if (IsEnumerable(memberType, compilation))
+                    else if (member.IsEnumerable)
                     {
-                        AppendEnumerableValue(sourceBuilder, memberName, memberType);
+                        AppendEnumerableValue(sourceBuilder, memberName, member.IsNullableType);
                     }
                     else
                     {
-                        if (IsNullableType(memberType))
+                        if (member.IsNullableType)
                         {
                             sourceBuilder.AppendLine($"        if ({memberName} == null)");
                             sourceBuilder.AppendLine("        {");
@@ -198,37 +254,24 @@ namespace Bcss.ToStringGenerator.Generators
                         }
                     }
                 }
-                else
-                {
-                    var redactionValue = GetRedactionValue(member, defaultRedactionValue);
-                    sourceBuilder.AppendLine($"        sb.Append(\"{redactionValue}\");");
-                }
                 
                 firstMember = false;
             }
         }
 
-        private static ITypeSymbol GetMemberType(ISymbol member)
+        private static bool IsDictionary(ITypeSymbol type, Compilation compilation)
         {
-            return member switch
-            {
-                IPropertySymbol property => property.Type,
-                IFieldSymbol field => field.Type,
-                _ => throw new ArgumentException($"Unexpected member type: {member.GetType()}")
-            };
-        }
-
-        private static bool IsDictionary(ITypeSymbol type)
-        {
-            // Get the metadata name which includes the generic type parameters
-            var metadataName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            // Check for both generic and non-generic IEnumerable
+            var dictionaryType = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
+            var dictionaryInterface = compilation.GetTypeByMetadataName("System.Collections.IDictionary");
             
-            // Check if it's a Dictionary<TKey,TValue> or IDictionary<TKey,TValue>
-            return metadataName.StartsWith("Dictionary<", StringComparison.Ordinal) ||
-                   metadataName.StartsWith("IDictionary<", StringComparison.Ordinal) ||
-                   type.AllInterfaces.Any(i => 
-                       i.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                        .StartsWith("IDictionary<", StringComparison.Ordinal));
+            if (dictionaryType == null || dictionaryInterface == null) 
+                return false;
+
+            // Check if the type implements IEnumerable<T> or IEnumerable
+            return type.AllInterfaces.Any(i => 
+                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryType) ||
+                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryInterface));
         }
 
         private static bool IsEnumerable(ITypeSymbol type, Compilation compilation)
@@ -262,9 +305,9 @@ namespace Bcss.ToStringGenerator.Generators
             return type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated;
         }
 
-        private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, ITypeSymbol type)
+        private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
         {
-            if (IsNullableType(type))
+            if (isNullable)
             {
                 sourceBuilder.AppendLine($"        if ({memberName} == null)");
                 sourceBuilder.AppendLine("        {");
@@ -308,9 +351,9 @@ namespace Bcss.ToStringGenerator.Generators
             sourceBuilder.AppendLine("            sb.Append(']');");
         }
 
-        private static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, ITypeSymbol type)
+        private static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
         {
-            if (IsNullableType(type))
+            if (isNullable)
             {
                 sourceBuilder.AppendLine($"        if ({memberName} == null)");
                 sourceBuilder.AppendLine("        {");
@@ -342,25 +385,6 @@ namespace Bcss.ToStringGenerator.Generators
             sourceBuilder.AppendLine("                }");
             sourceBuilder.AppendLine("            }");
             sourceBuilder.AppendLine("            sb.Append(']');");
-        }
-
-        private static string GetRedactionValue(ISymbol member, string defaultRedactionValue)
-        {
-            var attributeSyntax = member.DeclaringSyntaxReferences
-                .SelectMany(r => r.GetSyntax().DescendantNodes())
-                .OfType<AttributeSyntax>()
-                .FirstOrDefault(a => a.Name.ToString().Contains("SensitiveData"));
-
-            if (attributeSyntax?.ArgumentList?.Arguments.Count > 0)
-            {
-                var arg = attributeSyntax.ArgumentList.Arguments[0];
-                if (arg.Expression is LiteralExpressionSyntax literal)
-                {
-                    return literal.Token.ValueText;
-                }
-            }
-
-            return defaultRedactionValue;
         }
     }
 }

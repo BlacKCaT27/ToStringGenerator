@@ -16,13 +16,19 @@ namespace Bcss.ToStringGenerator.Tests.Unit
             // Arrange
             var source = @"
 using Bcss.ToStringGenerator.Attributes;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 [GenerateToString]
 public partial class TestClass
 {
     public string Name { get; set; }
     public int Age { get; set; }
-}";
+}
+
+public class NoAttr1{}
+
+[TestClass]
+public class NoAttr2{}";
 
             var compilation = CreateCompilation(source);
             var generator = new ClassToStringGenerator();
@@ -56,7 +62,7 @@ using Bcss.ToStringGenerator.Attributes;
 [GenerateToString]
 public partial class TestClass
 {
-    public string Name { get; set; }
+    public bool Name { get; set; }
     [SensitiveData]
     public string Password { get; set; }
     public int Age { get; set; }
