@@ -71,7 +71,7 @@ var user = new User();  // Using the example class above
 Console.WriteLine(user.ToString());
 
 // Output:
-[User: Username = john.doe, Password = ****, CreditCardNumber = CC, SSN = [REDACTED] Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = {Color = Blue, Font = Arial}]
+[User: Username = john.doe, Password = ****, CreditCardNumber = CC, SSN = [REDACTED], Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = [{Color = Blue], {Font = Arial}]
 ```
 
 ## Contributing
