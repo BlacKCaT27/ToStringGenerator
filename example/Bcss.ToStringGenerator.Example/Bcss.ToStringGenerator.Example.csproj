@@ -1,7 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
+    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" PrivateAssets="all" />
+    
+    <!-- The NuGet package of the source generator project contains an embedded copy of this DLL, but as the example app uses a project reference,
+    we need to add this manually. -->
+    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
   </ItemGroup>
 
   <PropertyGroup>

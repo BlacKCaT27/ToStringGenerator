@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
+using Bcss.ToStringGenerator.Attributes;
 
 namespace Bcss.ToStringGenerator.Generators
 {
@@ -9,8 +10,9 @@ namespace Bcss.ToStringGenerator.Generators
     {
         private const string DefaultRedactionValue = "[REDACTED]";
         private const string ConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
-        private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
-        private const string SensitiveDataAttributeName = "Bcss.ToStringGenerator.Attributes.SensitiveDataAttribute";
+        
+        private const string GenerateToStringAttributeName = nameof(GenerateToStringAttribute);
+        private const string SensitiveDataAttributeName = nameof(SensitiveDataAttribute);
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
