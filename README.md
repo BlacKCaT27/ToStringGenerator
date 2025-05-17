@@ -77,3 +77,7 @@ Console.WriteLine(user.ToString());
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - see [LICENSE.md](LICENSE.md)
