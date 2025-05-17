@@ -16,13 +16,95 @@ namespace Bcss.ToStringGenerator.Generators
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
+            GenerateMarkerAttributes(context);
             var defaultRedactionConfig = GetDefaultRedactionConfig(context);
             var typeDeclarations = GetTypeDeclarations(context);
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
-
+            
             context.RegisterSourceOutput(
                 combined.Combine(context.CompilationProvider),
                 (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type));
+        }
+
+        private static void GenerateMarkerAttributes(IncrementalGeneratorInitializationContext context)
+        {
+            // Register the attribute source
+            context.RegisterPostInitializationOutput(i =>
+            {
+                const string generateToStringAttribute = @"
+#if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
+namespace Bcss.ToStringGenerator.Attributes
+{
+    /// <summary>
+    /// <p>Generates a ToString() method for the marked class or struct at compile time.</p>
+    /// <p>By default, the string will be in the format:</p>
+    /// <code>[className: member1Name = member1value, member2Name = member2value, ... ]</code>
+    /// <br />
+    /// <p>Collection members that implement IEnumerable or IEnumerableT will have each element written in square brackets, comma separated.</p>
+    /// <code>[className: collectionMember = [value1, value2, value3] ... ]</code>
+    /// <br />
+    /// <p>Dictionary members that implement IDictionary or DictionaryT1, T2 will have each key-value pair written in brackets, comma separated.</p>
+    /// <code>[className: dictionaryMember = [{key1 = value1}, {key2 = value2}] ... ]</code>
+    /// <br />
+    /// </summary>
+    /// <remarks>
+    /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
+    /// the project containing this attribute directly.</p>
+    /// <br />
+    /// <p>If your project exposes internal classes via [InternalsVisibleTo] and you reference the source generator package in multiple
+    /// projects in one solution, you may end up with duplicate class definitions due to multiple generators being invoked. If this occurs,
+    /// define the following constant in your projects .csproj file, then add a direct reference to the <c>Bcss.ToStringGenerator.Attributes</c>
+    /// nuget package.</p>
+    /// <br />
+    /// <code><DefineConstants>TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants></code>
+    /// <br />
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+    public class GenerateToStringAttribute : Attribute
+    {
+    }
+}
+#endif";
+                i.AddSource("GenerateToStringAttribute.g.cs", generateToStringAttribute);
+            });
+            
+            context.RegisterPostInitializationOutput(i =>
+            {
+                const string generateToStringAttribute = @"
+#if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
+namespace Bcss.ToStringGenerator.Attributes
+{
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+    public class SensitiveDataAttribute : Attribute
+    {
+        public string MaskingValue { get; }
+
+        /// <summary>
+        /// Masks the value of the field or property that is marked with this attribute when
+        /// generating a ToString() method.
+        /// </summary>
+        /// <remarks>
+        /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
+        /// the project containing this attribute directly.</p>
+        /// <br />
+        /// <p>If your project exposes internal classes via [InternalsVisibleTo] and you reference the source generator package in multiple
+        /// projects in one solution, you may end up with duplicate class definitions due to multiple generators being invoked. If this occurs,
+        /// define the following constant in your projects .csproj file, then add a direct reference to the <c>Bcss.ToStringGenerator.Attributes</c>
+        /// nuget package.</p>
+        /// <br />
+        /// <code><DefineConstants>TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants></code>
+        /// <br />
+        /// </remarks>
+        /// <param name=""maskingValue"">Sets the value that will be used in the ToString output instead of the members actual value.</param>
+        public SensitiveDataAttribute(string maskingValue = ""[REDACTED]"")
+        {
+            MaskingValue = maskingValue;
+        }
+    }
+}
+#endif";
+                i.AddSource("SensitiveDataAttribute.g.cs", generateToStringAttribute);
+            });
         }
 
         private static IncrementalValueProvider<string> GetDefaultRedactionConfig(IncrementalGeneratorInitializationContext context)

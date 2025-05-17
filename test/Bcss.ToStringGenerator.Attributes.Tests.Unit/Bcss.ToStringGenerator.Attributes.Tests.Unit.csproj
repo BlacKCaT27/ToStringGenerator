@@ -26,8 +26,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        
-        <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" />
         <ProjectReference Include="..\Bcss.ToStringGenerator.TestData\Bcss.ToStringGenerator.TestData.csproj" />
     </ItemGroup>
 

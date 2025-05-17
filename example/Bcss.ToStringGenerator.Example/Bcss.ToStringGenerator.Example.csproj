@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
     
     <!-- The NuGet package of the source generator project contains an embedded copy of this DLL, but as the example app uses a project reference,
     we need to add this manually. -->
-    <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" />
+    <!-- <ProjectReference Include="..\..\src\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true"/> -->
   </ItemGroup>
 
   <PropertyGroup>
@@ -14,6 +14,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+
+    <!-- Uncomment this constants definition to disable automatic source generation of marker interfaces used by the source generator -->
+    <!-- <DefineConstants>GENERATE_TO_STRING_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants> -->
   </PropertyGroup>
 
 </Project>

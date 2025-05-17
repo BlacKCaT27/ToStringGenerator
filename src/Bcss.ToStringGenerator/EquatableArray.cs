@@ -8,8 +8,6 @@ using System.Collections.Immutable;
 internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnumerable<T>
     where T : IEquatable<T>
 {
-    public static readonly EquatableArray<T> Empty = new(Array.Empty<T>());
-    
     private readonly T[]? _array;
     
     /// <param name="array">The input <see cref="ImmutableArray"/> to wrap.</param>
@@ -55,11 +53,6 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
     {
         return _array.AsSpan();
     }
-
-    /// <summary>
-    /// Gets the underlying array if there is one
-    /// </summary>
-    public T[]? GetArray() => _array;
 
     /// <inheritdoc/>
     IEnumerator<T> IEnumerable<T>.GetEnumerator()

@@ -5,6 +5,7 @@ namespace Bcss.ToStringGenerator.Example
     [GenerateToString]
     public partial class User
     {
+        public string Test = "te";
         public string Username { get; set; } = "john.doe";
 
         [SensitiveData]
