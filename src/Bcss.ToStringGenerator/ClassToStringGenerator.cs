@@ -376,26 +376,18 @@ namespace Bcss.ToStringGenerator.Attributes
                 SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable));
         }
 
-        private static bool IsNullableType(ISymbol type)
+        private static bool IsNullableType(ISymbol member)
         {
+            var type = GetMemberType(member);
+
             // Check if it's a nullable value type (e.g., int?)
-            if (type is INamedTypeSymbol namedType && namedType.SpecialType == SpecialType.System_Nullable_T)
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T })
             {
                 return true;
             }
 
-            if (type is IFieldSymbol fieldSymbol)
-            {
-                return fieldSymbol.Type.OriginalDefinition.SpecialType is SpecialType.System_Nullable_T or SpecialType.System_String;
-            }
-
-            if (type is ITypeSymbol typeSymbol)
-            {
-                // Check if it's a reference type with nullable annotation
-                return typeSymbol.IsReferenceType && typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
-            }
-
-            return false;
+            // Check if it's a reference type (all reference types are nullable in C# 9.0+ with nullable reference types enabled)
+            return type.IsReferenceType && type.NullableAnnotation != NullableAnnotation.NotAnnotated;
         }
 
         private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
@@ -424,21 +416,21 @@ namespace Bcss.ToStringGenerator.Attributes
             sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("            {");
             sourceBuilder.AppendLine($"                var pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                sb.Append('{');");
+            sourceBuilder.AppendLine("                sb.Append('[');");
             sourceBuilder.AppendLine("                sb.Append(pair.Key.ToString());");
-            sourceBuilder.AppendLine("                sb.Append(\" = \");");
+            sourceBuilder.AppendLine("                sb.Append(\", \");");
             sourceBuilder.AppendLine("                sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                sb.Append('}');");
+            sourceBuilder.AppendLine("                sb.Append(']');");
             sourceBuilder.AppendLine();
             sourceBuilder.AppendLine($"                while ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("                {");
             sourceBuilder.AppendLine("                    sb.Append(\", \");");
             sourceBuilder.AppendLine($"                    pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                    sb.Append('{');");
+            sourceBuilder.AppendLine("                    sb.Append('[');");
             sourceBuilder.AppendLine("                    sb.Append(pair.Key.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append(\" = \");");
+            sourceBuilder.AppendLine("                    sb.Append(\", \");");
             sourceBuilder.AppendLine("                    sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append('}');");
+            sourceBuilder.AppendLine("                    sb.Append(']');");
             sourceBuilder.AppendLine("                }");
             sourceBuilder.AppendLine("            }");
             sourceBuilder.AppendLine("            sb.Append(']');");
