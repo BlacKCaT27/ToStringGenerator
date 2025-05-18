@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
-using Bcss.ToStringGenerator.Attributes;
 
 namespace Bcss.ToStringGenerator.Generators
 {
@@ -11,8 +10,8 @@ namespace Bcss.ToStringGenerator.Generators
         private const string DefaultRedactionValue = "[REDACTED]";
         private const string ConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
         
-        private const string GenerateToStringAttributeName = nameof(GenerateToStringAttribute);
-        private const string SensitiveDataAttributeName = nameof(SensitiveDataAttribute);
+        private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
+        private const string SensitiveDataAttributeName = "Bcss.ToStringGenerator.Attributes.SensitiveDataAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -163,7 +162,7 @@ namespace Bcss.ToStringGenerator.Attributes
                     memberSymbol.Name,
                     IsDictionary(memberType, compilation),
                     IsEnumerable(memberType, compilation),
-                    IsNullableType(memberSymbol.ContainingType),
+                    IsNullableType(memberSymbol),
                     isSensitive,
                     mask));
             }
@@ -377,16 +376,26 @@ namespace Bcss.ToStringGenerator.Attributes
                 SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable));
         }
 
-        private static bool IsNullableType(ITypeSymbol type)
+        private static bool IsNullableType(ISymbol type)
         {
             // Check if it's a nullable value type (e.g., int?)
-            if (type is INamedTypeSymbol namedType && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            if (type is INamedTypeSymbol namedType && namedType.SpecialType == SpecialType.System_Nullable_T)
             {
                 return true;
             }
 
-            // Check if it's a reference type with nullable annotation
-            return type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated;
+            if (type is IFieldSymbol fieldSymbol)
+            {
+                return fieldSymbol.Type.OriginalDefinition.SpecialType is SpecialType.System_Nullable_T or SpecialType.System_String;
+            }
+
+            if (type is ITypeSymbol typeSymbol)
+            {
+                // Check if it's a reference type with nullable annotation
+                return typeSymbol.IsReferenceType && typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+            }
+
+            return false;
         }
 
         private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)

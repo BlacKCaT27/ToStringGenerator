@@ -119,6 +119,73 @@ public partial class TestClass
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain field name");
             Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain field value");
         }
+        
+        [TestMethod]
+        public void GenerateToString_WithNullableFields_IncludesNullCheck()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+
+[GenerateToString]
+public partial class TestClass
+{
+    public string? Name;
+}";
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator);
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var generatedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClass.ToString.g.cs"));
+            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = generatedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name");
+            Assert.IsTrue(generatedCode.Contains("if (Name == null)"), "Generated code should contain field name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain field name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain field value");
+        }
+        
+        [TestMethod]
+        public void GenerateToString_WithNullableReferenceFields_IncludesNullCheck()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+
+public class SubClass {
+    public int count = 1;
+}
+[GenerateToString]
+public partial class TestClass
+{
+    public SubClass SubClass;
+}";
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator);
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var generatedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClass.ToString.g.cs"));
+            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = generatedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"SubClass = \")"), "Generated code should contain field name");
+            Assert.IsTrue(generatedCode.Contains("if (SubClass == null)"), "Generated code should contain field null check");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain null string");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(SubClass.ToString())"), "Generated code should contain field value");
+        }
 
         [TestMethod]
         public void GenerateToString_WithoutAttribute_DoesNotGenerateToString()

@@ -26,11 +26,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        
         <ProjectReference Include="..\Bcss.ToStringGenerator.TestData\Bcss.ToStringGenerator.TestData.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Analyzer Include="..\..\src\Bcss.ToStringGenerator\bin\Debug\netstandard2.0\Bcss.ToStringGenerator.dll" />
     </ItemGroup>
 
     <Target Name="ForceSourceGenerator" BeforeTargets="CoreCompile">
