@@ -19,6 +19,14 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
     /// <inheritdoc/>
     public bool Equals(EquatableArray<T> array)
     {
+        if (_array is null)
+        {
+            return array._array is null;
+        }
+        if (array._array is null)
+        {
+            return false;
+        }
         return AsSpan().SequenceEqual(array.AsSpan());
     }
 
@@ -36,13 +44,15 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
             return 0;
         }
 
-        int hash = 0;
-        foreach (T item in array)
+        unchecked
         {
-            hash += item.GetHashCode();
+            int hash = 17;
+            foreach (T item in array)
+            {
+                hash = hash * 31 + item.GetHashCode();
+            }
+            return hash;
         }
-
-        return hash;
     }
 
     /// <summary>
@@ -51,7 +61,7 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
     /// <returns>A <see cref="ReadOnlySpan{T}"/> wrapping the current items.</returns>
     private ReadOnlySpan<T> AsSpan()
     {
-        return _array.AsSpan();
+        return _array is not null ? _array.AsSpan() : ReadOnlySpan<T>.Empty;
     }
 
     /// <inheritdoc/>

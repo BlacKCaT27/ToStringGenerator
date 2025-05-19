@@ -1,6 +1,8 @@
 using System.Text;
 using Bcss.ToStringGenerator.Attributes;
 using Bcss.ToStringGenerator.Generators;
+using FluentAssertions;
+using FluentAssertions.Execution;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -392,6 +394,131 @@ public partial class SensitiveCollectionsExample
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \")"), "Generated code should contain property name");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Secrets = \")"), "Generated code should contain property name");
             Assert.IsTrue(generatedCode.Contains("\"***\""), "Generated code should contain redaction value");
+        }
+
+        [TestMethod]
+        public void TestGeneratorProperlyCreatesCacheableResults()
+        {
+            const string input = @"
+using Bcss.ToStringGenerator.Attributes;
+using System.Collections.Generic;
+
+public class ChildClass
+{
+    public string ChildStr;
+}
+
+[GenerateToString]
+public partial class SensitiveCollectionsExample
+{
+    public int? NullInt;
+    public string TestString;
+
+    public ChildClass Child;
+    
+    public List<int> Numbers { get; set; } = new() { 1, 2, 3 };
+    [SensitiveData(""""***"""")]
+    public Dictionary<string, string> Secrets { get; set; } = new()
+    {
+        { """"key1"""", """"value1"""" },
+        { """"key2"""", """"value2"""" }
+    };
+}
+";
+            const string expected = @"
+{
+    {
+        Item1 =
+        {
+            Item1 = Microsoft.CodeAnalysis.GeneratedSourceText
+            {
+                {
+                    HintName = ""SensitiveCollectionsExample.ToString.g.cs"",
+                    Text = using System;
+using System.Text;
+using System.Collections.Generic;
+
+namespace <global namespace>;
+
+public partial class SensitiveCollectionsExample
+{
+   public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.Append(""[SensitiveCollectionsExample: "");
+
+        sb.Append(""NullInt = "");
+        if (NullInt == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(NullInt.ToString());
+        }
+        sb.Append("", TestString = "");
+        if (TestString == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(TestString.ToString());
+        }
+        sb.Append("", Child = "");
+        if (Child == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(Child.ToString());
+        }
+        sb.Append("", Numbers = "");
+        if (Numbers == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append('[');
+            var NumbersEnumerator = Numbers.GetEnumerator();
+            if (NumbersEnumerator.MoveNext())
+            {
+                sb.Append(NumbersEnumerator.Current.ToString());
+
+                while (NumbersEnumerator.MoveNext())
+                {
+                    sb.Append("", "");
+                    sb.Append(NumbersEnumerator.Current.ToString());
+                }
+            }
+            sb.Append(']');
+        }
+        sb.Append("", Secrets = "");
+        sb.Append(""[REDACTED]"");
+
+        sb.Append(""]"");
+        return sb.ToString();
+    }
+}
+                }
+            }
+        ,
+            Item2 = {empty}
+        },
+        Item2 = IncrementalStepRunReason.Modified {value: 1}
+    }
+}";
+
+            // run the generator, passing in the inputs and the tracking names
+            var (diagnostics, output) 
+                = TestHelpers.GetGeneratedTrees<ClassToStringGenerator>([input]);
+
+            // Assert the output
+            using var s = new AssertionScope();
+            diagnostics.Should().BeEmpty();
+            output.Should().BeEquivalentTo(expected);
         }
 
         private static Compilation CreateCompilation(string source)

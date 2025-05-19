@@ -117,7 +117,8 @@ namespace Bcss.ToStringGenerator.Attributes
                     }
 
                     return DefaultRedactionValue;
-                });
+                })
+                .WithTrackingName(TrackingNames.ReadConfig);
         }
 
         private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarations(IncrementalGeneratorInitializationContext context)
@@ -126,7 +127,8 @@ namespace Bcss.ToStringGenerator.Attributes
                 .ForAttributeWithMetadataName(
                     GenerateToStringAttributeName,
                     predicate: (node, _) => node is ClassDeclarationSyntax,
-                    transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx));
+                    transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx))
+                .WithTrackingName(TrackingNames.InitialExtraction);
         }
 
         private static ClassSymbolData? GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
@@ -232,7 +234,8 @@ namespace Bcss.ToStringGenerator.Attributes
             return typeDeclarations
                 .Collect()
                 .Select((nodes, _) => nodes.FirstOrDefault())
-                .Combine(defaultRedactionConfig);
+                .Combine(defaultRedactionConfig)
+                .WithTrackingName(TrackingNames.CombineProviders);
         }
 
         private static void Execute(SourceProductionContext context, string defaultRedactionValue, ClassSymbolData? classSymbolData)
