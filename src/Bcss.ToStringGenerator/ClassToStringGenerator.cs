@@ -20,9 +20,8 @@ namespace Bcss.ToStringGenerator.Generators
             var typeDeclarations = GetTypeDeclarations(context);
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
             
-            context.RegisterSourceOutput(
-                combined.Combine(context.CompilationProvider),
-                (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type));
+            context.RegisterSourceOutput(combined,
+                (spc, tuple) => Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Type));
         }
 
         private static void GenerateMarkerAttributes(IncrementalGeneratorInitializationContext context)
@@ -117,7 +116,8 @@ namespace Bcss.ToStringGenerator.Attributes
                     }
 
                     return DefaultRedactionValue;
-                });
+                })
+                .WithTrackingName(TrackingNames.ReadConfig);
         }
 
         private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarations(IncrementalGeneratorInitializationContext context)
@@ -126,7 +126,8 @@ namespace Bcss.ToStringGenerator.Attributes
                 .ForAttributeWithMetadataName(
                     GenerateToStringAttributeName,
                     predicate: (node, _) => node is ClassDeclarationSyntax,
-                    transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx));
+                    transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx))
+                .WithTrackingName(TrackingNames.InitialExtraction);
         }
 
         private static ClassSymbolData? GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
@@ -232,7 +233,8 @@ namespace Bcss.ToStringGenerator.Attributes
             return typeDeclarations
                 .Collect()
                 .Select((nodes, _) => nodes.FirstOrDefault())
-                .Combine(defaultRedactionConfig);
+                .Combine(defaultRedactionConfig)
+                .WithTrackingName(TrackingNames.CombineProviders);
         }
 
         private static void Execute(SourceProductionContext context, string defaultRedactionValue, ClassSymbolData? classSymbolData)
@@ -416,21 +418,21 @@ namespace Bcss.ToStringGenerator.Attributes
             sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("            {");
             sourceBuilder.AppendLine($"                var pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                sb.Append('[');");
+            sourceBuilder.AppendLine("                sb.Append('{');");
             sourceBuilder.AppendLine("                sb.Append(pair.Key.ToString());");
             sourceBuilder.AppendLine("                sb.Append(\", \");");
             sourceBuilder.AppendLine("                sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                sb.Append(']');");
+            sourceBuilder.AppendLine("                sb.Append('}');");
             sourceBuilder.AppendLine();
             sourceBuilder.AppendLine($"                while ({memberName}Enumerator.MoveNext())");
             sourceBuilder.AppendLine("                {");
             sourceBuilder.AppendLine("                    sb.Append(\", \");");
             sourceBuilder.AppendLine($"                    pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                    sb.Append('[');");
+            sourceBuilder.AppendLine("                    sb.Append('{');");
             sourceBuilder.AppendLine("                    sb.Append(pair.Key.ToString());");
             sourceBuilder.AppendLine("                    sb.Append(\", \");");
             sourceBuilder.AppendLine("                    sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append(']');");
+            sourceBuilder.AppendLine("                    sb.Append('}');");
             sourceBuilder.AppendLine("                }");
             sourceBuilder.AppendLine("            }");
             sourceBuilder.AppendLine("            sb.Append(']');");

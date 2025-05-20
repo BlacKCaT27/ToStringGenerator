@@ -1,6 +1,7 @@
 using System.Text;
 using Bcss.ToStringGenerator.Attributes;
 using Bcss.ToStringGenerator.Generators;
+using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -10,6 +11,182 @@ namespace Bcss.ToStringGenerator.Tests.Unit
     [TestClass]
     public class ClassToStringGeneratorTests
     {
+        [TestMethod]
+        public void _Caching_TestGeneratorProperlyCreatesCacheableResults()
+        {
+            const string input = @"
+using Bcss.ToStringGenerator.Attributes;
+using System.Collections.Generic;
+
+public class ChildClass
+{
+    public string ChildStr;
+}
+
+[GenerateToString]
+public partial class SensitiveCollectionsExample
+{
+    public int? NullInt;
+    public string TestString;
+
+    public ChildClass Child;
+    
+    public List<int> Numbers { get; set; } = new() { 1, 2, 3 };
+    [SensitiveData(""""***"""")]
+    public Dictionary<string, string> Secrets { get; set; } = new()
+    {
+        { """"key1"""", """"value1"""" },
+        { """"key2"""", """"value2"""" }
+    };
+}
+";
+            const string expected = @"
+#if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
+namespace Bcss.ToStringGenerator.Attributes
+{
+    /// <summary>
+    /// <p>Generates a ToString() method for the marked class or struct at compile time.</p>
+    /// <p>By default, the string will be in the format:</p>
+    /// <code>[className: member1Name = member1value, member2Name = member2value, ... ]</code>
+    /// <br />
+    /// <p>Collection members that implement IEnumerable or IEnumerableT will have each element written in square brackets, comma separated.</p>
+    /// <code>[className: collectionMember = [value1, value2, value3] ... ]</code>
+    /// <br />
+    /// <p>Dictionary members that implement IDictionary or DictionaryT1, T2 will have each key-value pair written in brackets, comma separated.</p>
+    /// <code>[className: dictionaryMember = [{key1 = value1}, {key2 = value2}] ... ]</code>
+    /// <br />
+    /// </summary>
+    /// <remarks>
+    /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
+    /// the project containing this attribute directly.</p>
+    /// <br />
+    /// <p>If your project exposes internal classes via [InternalsVisibleTo] and you reference the source generator package in multiple
+    /// projects in one solution, you may end up with duplicate class definitions due to multiple generators being invoked. If this occurs,
+    /// define the following constant in your projects .csproj file, then add a direct reference to the <c>Bcss.ToStringGenerator.Attributes</c>
+    /// nuget package.</p>
+    /// <br />
+    /// <code><DefineConstants>TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants></code>
+    /// <br />
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+    public class GenerateToStringAttribute : Attribute
+    {
+    }
+}
+#endif
+
+#if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
+namespace Bcss.ToStringGenerator.Attributes
+{
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+    public class SensitiveDataAttribute : Attribute
+    {
+        public string MaskingValue { get; }
+
+        /// <summary>
+        /// Masks the value of the field or property that is marked with this attribute when
+        /// generating a ToString() method.
+        /// </summary>
+        /// <remarks>
+        /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
+        /// the project containing this attribute directly.</p>
+        /// <br />
+        /// <p>If your project exposes internal classes via [InternalsVisibleTo] and you reference the source generator package in multiple
+        /// projects in one solution, you may end up with duplicate class definitions due to multiple generators being invoked. If this occurs,
+        /// define the following constant in your projects .csproj file, then add a direct reference to the <c>Bcss.ToStringGenerator.Attributes</c>
+        /// nuget package.</p>
+        /// <br />
+        /// <code><DefineConstants>TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants></code>
+        /// <br />
+        /// </remarks>
+        /// <param name=""maskingValue"">Sets the value that will be used in the ToString output instead of the members actual value.</param>
+        public SensitiveDataAttribute(string maskingValue = ""[REDACTED]"")
+        {
+            MaskingValue = maskingValue;
+        }
+    }
+}
+#endif
+using System;
+using System.Text;
+using System.Collections.Generic;
+
+namespace <global namespace>;
+
+public partial class SensitiveCollectionsExample
+{
+   public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.Append(""[SensitiveCollectionsExample: "");
+
+        sb.Append(""NullInt = "");
+        if (NullInt == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(NullInt.ToString());
+        }
+        sb.Append("", TestString = "");
+        if (TestString == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(TestString.ToString());
+        }
+        sb.Append("", Child = "");
+        if (Child == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append(Child.ToString());
+        }
+        sb.Append("", Numbers = "");
+        if (Numbers == null)
+        {
+            sb.Append(""null"");
+        }
+        else
+        {
+            sb.Append('[');
+            var NumbersEnumerator = Numbers.GetEnumerator();
+            if (NumbersEnumerator.MoveNext())
+            {
+                sb.Append(NumbersEnumerator.Current.ToString());
+
+                while (NumbersEnumerator.MoveNext())
+                {
+                    sb.Append("", "");
+                    sb.Append(NumbersEnumerator.Current.ToString());
+                }
+            }
+            sb.Append(']');
+        }
+        sb.Append("", Secrets = "");
+        sb.Append(""[REDACTED]"");
+
+        sb.Append(""]"");
+        return sb.ToString();
+    }
+}
+";
+
+            // run the generator, passing in the inputs and the tracking names
+            var (diagnostics, output) 
+                = TestHelpers.GetGeneratedTrees<ClassToStringGenerator>([input]);
+
+            // Assert the output
+            diagnostics.Should()!.BeEmpty();
+            string fullOutput = string.Join(Environment.NewLine, output);
+            fullOutput.Should()!.BeEquivalentTo(expected);
+        }
+        
         [TestMethod]
         public void GenerateToString_WithPublicProperties_GeneratesCorrectToString()
         {
