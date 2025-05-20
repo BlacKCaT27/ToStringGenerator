@@ -16,10 +16,11 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
         /// Sanity check test to ensure that the generator is actually generating code.
         /// Relies on a specific path to another test project, may need tweaking/removal/ignoring in builds.
         /// </summary>
+        [Ignore("Fails in CI due to local-dev-specific paths. Only run locally to verify generator is working as expected.")]
         [TestMethod]
         public void Generator_ProducesGeneratedCode()
         {
-            var _ = new GenerateToStringTestClass();
+            _ = new GenerateToStringTestClass();
             // Arrange
             var generatedFilesPath = Path.Combine(
                 AppContext.BaseDirectory,

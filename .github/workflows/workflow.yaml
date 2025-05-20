@@ -59,4 +59,3 @@ jobs:
         subject: 'Build of branch "main" failed for "$GITHUB_ACTION_REPOSITORY"'
         body: '<em>Build failure for repository. Please see Github Workflows page for more details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID</em>'
         type: 'text/html'
-        attachment: 'artifacts.zip'
