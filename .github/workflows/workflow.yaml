@@ -29,12 +29,12 @@ jobs:
       run: dotnet build --no-restore
     
     - name: Test with coverage
-      run: dotnet test --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./TestResults/ /p:Threshold=80
+      run: dotnet test --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=coverage.cobertura.xml /p:Threshold=80
       
     - name: Generate coverage report
       uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
       with:
-        reports: 'TestResults/coverage.cobertura.xml'
+        reports: 'coverage.cobertura.xml'
         targetdir: 'coveragereport'
         reporttypes: 'HtmlInline;Cobertura'
         
