@@ -24,13 +24,23 @@ namespace Bcss.ToStringGenerator.Example
         public Dictionary<string, string> Preferences { get; set; } = new Dictionary<string, string> { { "Color", "Blue" }, { "Font", "Arial" } };
     }
 
+    [GenerateToString]
+    public partial class TestClass
+    {
+        public string Test { get; set; } = "test";
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
             var user = new User();
+            var test = new TestClass();
             Console.WriteLine("User details:");
             Console.WriteLine(user.ToString());
+            
+            Console.WriteLine("TestClass details:");
+            Console.WriteLine(test.ToString());
         }
     }
 }

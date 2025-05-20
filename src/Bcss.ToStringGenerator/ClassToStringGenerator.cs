@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
+using System.Collections.Immutable;
 
 namespace Bcss.ToStringGenerator.Generators
 {
@@ -21,7 +22,7 @@ namespace Bcss.ToStringGenerator.Generators
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
             
             context.RegisterSourceOutput(combined,
-                (spc, tuple) => Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Type));
+                (spc, tuple) => Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Types));
         }
 
         private static void GenerateMarkerAttributes(IncrementalGeneratorInitializationContext context)
@@ -141,8 +142,8 @@ namespace Bcss.ToStringGenerator.Attributes
 
             var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(targetNode);
             if (typeSymbol is null) return null;
-            
-            string containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
+
+            string containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
             string classAccessibility = GetAccessibility(typeSymbol);
             string className = typeSymbol.Name;
             var memberSymbols = GetPublicMembers(typeSymbol);
@@ -226,26 +227,28 @@ namespace Bcss.ToStringGenerator.Attributes
             return null;
         }
 
-        private static IncrementalValueProvider<(ClassSymbolData? Type, string DefaultRedaction)> CombineProviders(
+        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData?> Types, string DefaultRedaction)> CombineProviders(
             IncrementalValuesProvider<ClassSymbolData?> typeDeclarations,
             IncrementalValueProvider<string> defaultRedactionConfig)
         {
             return typeDeclarations
                 .Collect()
-                .Select((nodes, _) => nodes.FirstOrDefault())
                 .Combine(defaultRedactionConfig)
                 .WithTrackingName(TrackingNames.CombineProviders);
         }
 
-        private static void Execute(SourceProductionContext context, string defaultRedactionValue, ClassSymbolData? classSymbolData)
+        private static void Execute(SourceProductionContext context, string defaultRedactionValue, ImmutableArray<ClassSymbolData?> classSymbolData)
         {
-            if (!classSymbolData.HasValue) return;
+            foreach (var classData in classSymbolData)
+            {
+                if (classData == null) continue;
 
-            var sourceCode = GenerateToStringMethod(classSymbolData.Value, defaultRedactionValue);
-            var fileName = $"{classSymbolData.Value.ClassName}.ToString.g.cs";
+                var sourceCode = GenerateToStringMethod(classData.Value, defaultRedactionValue);
+                var fileName = $"{classData.Value.ClassName}.ToString.g.cs";
 
-            context.CancellationToken.ThrowIfCancellationRequested();
-            context.AddSource(fileName, sourceCode);
+                context.CancellationToken.ThrowIfCancellationRequested();
+                context.AddSource(fileName, sourceCode);
+            }
         }
 
         private static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)

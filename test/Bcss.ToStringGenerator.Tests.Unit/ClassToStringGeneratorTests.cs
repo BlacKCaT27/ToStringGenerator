@@ -228,6 +228,61 @@ public class NoAttr2{}";
             Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain property value");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
         }
+        
+        [TestMethod]
+        public void GenerateToString_Generates_ToString_For_Multiple_Classes()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+[GenerateToString]
+public partial class TestClass
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+[GenerateToString]
+public partial class TestClassTwo
+{
+    public string Name { get; set; }
+}";
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator);
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var testClassGeneratedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClass.ToString.g.cs"));
+            Assert.IsNotNull(testClassGeneratedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = testClassGeneratedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("public override string ToString()"), "Generated code should contain ToString method");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"[TestClass: \")"), "Generated code should contain class name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
+            
+            // Assert
+            var testClassTwoGeneratedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClassTwo.ToString.g.cs"));
+            Assert.IsNotNull(testClassTwoGeneratedSyntax, "Generated syntax tree two should not be null");
+
+            var generatedCodeTwo = testClassTwoGeneratedSyntax.ToString();
+            Assert.IsTrue(generatedCodeTwo.Contains("public override string ToString()"), "Generated code should contain ToString method");
+            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"[TestClassTwo: \")"), "Generated code should contain class name");
+            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(Name.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
+        }
 
         [TestMethod]
         public void GenerateToString_WithSensitiveField_ExcludesSensitiveField()
