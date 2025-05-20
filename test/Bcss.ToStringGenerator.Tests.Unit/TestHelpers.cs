@@ -90,8 +90,10 @@ public static class TestHelpers
     public static (ImmutableArray<Diagnostic> Diagnostics, string[] Output) GetGeneratedTrees<T>(params string[] sources)
         where T : IIncrementalGenerator, new()
     {
+        Assembly assembly = Assembly.Load("Bcss.ToStringGenerator");
+        Type trackingNamesType = assembly.GetType("Bcss.ToStringGenerator.TrackingNames")!;
         // get all the const string fields on the TrackingName type
-        var trackingNames = typeof(TrackingNames)
+        var trackingNames = trackingNamesType
             .GetFields()
             .Where(fi => fi is { IsLiteral: true, IsInitOnly: false } && fi.FieldType == typeof(string))
             .Select(x => (string)x.GetRawConstantValue()!)
@@ -100,14 +102,6 @@ public static class TestHelpers
 
         // Call the other overload, passing in the tracking names
         return GetGeneratedTrees<T>(sources, trackingNames);
-    }
-    
-    // keep this up to date with `TrackingNames` found in Bcss.ToGenerator.
-    private static class TrackingNames
-    {
-        public const string ReadConfig = nameof(ReadConfig);
-        public const string InitialExtraction = nameof(InitialExtraction);
-        public const string CombineProviders = nameof(CombineProviders);
     }
     
     private static void AssertRunsEqual(
