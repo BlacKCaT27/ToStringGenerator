@@ -32,7 +32,6 @@
     <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
 
     <!-- Reference the attributes project from the generator to compile against them -->
-    <!-- Ensure we specify PrivateAssets so the NuGet doesn't have any dependencies -->
     <ProjectReference Include="..\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" PrivateAssets="all" />
   </ItemGroup>
   

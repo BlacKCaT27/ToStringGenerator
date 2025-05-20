@@ -74,6 +74,14 @@ Console.WriteLine(user.ToString());
 [User: Username = john.doe, Password = ****, CreditCardNumber = CC, SSN = [REDACTED], Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = [{Color = Blue}, {Font = Arial}]
 ```
 
+You can also override the default value globally using the `ToStringGeneratorRedactedValue` msbuild property:
+
+```xml
+<ToStringGeneratorRedactedValue>[MyNewRedactionValue]</ToStringGeneratorRedactedValue>
+```
+
+Whenever a masking value is not provided to `SensitiveData`, this property's value will be used instead.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

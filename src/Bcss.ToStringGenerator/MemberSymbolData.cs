@@ -3,7 +3,7 @@ namespace Bcss.ToStringGenerator;
 /// <summary>
 /// A struct containing information needed to properly generate the contents of a ToString() method for a class member.
 /// </summary>
-public readonly struct MemberSymbolData : IEquatable<MemberSymbolData>
+internal readonly struct MemberSymbolData : IEquatable<MemberSymbolData>
 {
     public string MemberName { get; }
     public bool IsDictionary { get; }

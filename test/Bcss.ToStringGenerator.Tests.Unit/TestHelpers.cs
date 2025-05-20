@@ -102,6 +102,14 @@ public static class TestHelpers
         return GetGeneratedTrees<T>(sources, trackingNames);
     }
     
+    // keep this up to date with `TrackingNames` found in Bcss.ToGenerator.
+    private static class TrackingNames
+    {
+        public const string ReadConfig = nameof(ReadConfig);
+        public const string InitialExtraction = nameof(InitialExtraction);
+        public const string CombineProviders = nameof(CombineProviders);
+    }
+    
     private static void AssertRunsEqual(
         GeneratorDriverRunResult runResult1,
         GeneratorDriverRunResult runResult2,

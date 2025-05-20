@@ -15,6 +15,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F905AAF8-C75C-4979-81C1-B0EA559B88A9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{7C95DAC3-5DC2-4804-9D5F-281810DB4E65}"
+	ProjectSection(SolutionItems) = preProject
+		test\Directory.Build.props = test\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example", "example", "{F3221810-1109-4D81-963F-1D6032E62913}"
 EndProject
@@ -27,6 +30,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{CC8E
 		LICENSE.md = LICENSE.md
 		README.md = README.md
 		Bcss.ToStringGenerator.props = Bcss.ToStringGenerator.props
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Global

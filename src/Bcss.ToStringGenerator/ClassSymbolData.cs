@@ -3,7 +3,7 @@ namespace Bcss.ToStringGenerator;
 /// <summary>
 /// A struct containing all the data needed to generate a ToString() method for a class.
 /// </summary>
-public readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
+internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
 {
     public string ContainingNamespace { get; }
     public string ClassAccessibility { get; }

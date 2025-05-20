@@ -4,6 +4,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Bcss.ToStringGenerator
 {
+    /// <summary>
+    /// Generates source code to override the "ToString()" method for classes by analyzing the target source code using Roslyn.
+    /// </summary>
     [Generator]
     public class ClassToStringGenerator : IIncrementalGenerator
     {
@@ -13,11 +16,15 @@ namespace Bcss.ToStringGenerator
         private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
         private const string SensitiveDataAttributeName = "Bcss.ToStringGenerator.Attributes.SensitiveDataAttribute";
 
+        /// <summary>
+        /// Initializes the incremental source generator.
+        /// </summary>
+        /// <param name="context">The context for the incremental generator initialization, providing mechanisms to register actions or interact with the compilation process.</param>
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             GenerateMarkerAttributes(context);
-            var defaultRedactionConfig = GetDefaultRedactionConfig(context);
-            var typeDeclarations = GetTypeDeclarations(context);
+            var defaultRedactionConfig = GetDefaultRedactionConfigProvider(context);
+            var typeDeclarations = GetTypeDeclarationsProvider(context);
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
             
             context.RegisterSourceOutput(combined,
@@ -75,9 +82,17 @@ namespace Bcss.ToStringGenerator.Attributes
 #if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
 namespace Bcss.ToStringGenerator.Attributes
 {
+    /// <summary>
+    /// An attribute for marking a field or property as sensitive. Sensitive members will not have their value output
+    /// in the generated ToString() method. Instead, the provided `maskingValue` string is written. If no value is given,
+    /// a default value is used.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public class SensitiveDataAttribute : Attribute
     {
+        /// <summary>
+        /// Gets the masking value to be used for the member marked with this attribute.
+        /// </summary>
         public string MaskingValue { get; }
 
         /// <summary>
@@ -108,14 +123,15 @@ namespace Bcss.ToStringGenerator.Attributes
             });
         }
 
-        private static IncrementalValueProvider<string> GetDefaultRedactionConfig(IncrementalGeneratorInitializationContext context)
+        private static IncrementalValueProvider<string> GetDefaultRedactionConfigProvider(
+            IncrementalGeneratorInitializationContext context)
         {
             return context.AnalyzerConfigOptionsProvider
                 .Select((provider, _) => provider.GlobalOptions.TryGetValue(ConfigurationKey, out var value) ? value : DefaultRedactionValue)
                 .WithTrackingName(TrackingNames.ReadConfig);
         }
 
-        private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarations(IncrementalGeneratorInitializationContext context)
+        private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarationsProvider(IncrementalGeneratorInitializationContext context)
         {
             return context.SyntaxProvider
                 .ForAttributeWithMetadataName(

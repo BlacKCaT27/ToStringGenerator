@@ -1,8 +1,16 @@
 namespace Bcss.ToStringGenerator.Attributes
 {
+    /// <summary>
+    /// An attribute for marking a field or property as sensitive. Sensitive members will not have their value output
+    /// in the generated ToString() method. Instead, the provided `maskingValue` string is written. If no value is given,
+    /// a default value is used.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public class SensitiveDataAttribute : Attribute
     {
+        /// <summary>
+        /// Gets the masking value to be used for the member marked with this attribute.
+        /// </summary>
         public string MaskingValue { get; }
 
         /// <summary>

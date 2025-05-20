@@ -2,9 +2,28 @@
 
 namespace Bcss.ToStringGenerator;
 
-public static class ToStringGeneratorHelper
+/// <summary>
+/// Provides helper methods for generating a string representation of a class in the form of a ToString() method.
+/// This class is intended to help the source generation process by constructing the necessary code
+/// based on the metadata of a given class.
+/// </summary>
+internal static class ToStringGeneratorHelper
 {
-    public static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)
+    /// <summary>
+    /// Generates a string representation of a class by creating a ToString() method
+    /// using the provided class symbol data and a default redaction value.
+    /// </summary>
+    /// <param name="classSymbolData">
+    /// The class metadata used to construct the ToString() method, including namespace,
+    /// accessibility, class name, and its members.
+    /// </param>
+    /// <param name="defaultRedactionValue">
+    /// The default value to use for redacted or sensitive fields in the generated ToString() method.
+    /// </param>
+    /// <returns>
+    /// A string containing the generated source code for the ToString() method of the specified class.
+    /// </returns>
+    internal static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)
     {
         var sourceBuilder = new StringBuilder();
         AddUsingsAndNamespace(sourceBuilder, classSymbolData.ContainingNamespace);
@@ -13,7 +32,7 @@ public static class ToStringGeneratorHelper
         return sourceBuilder.ToString();
     }
 
-    public static void AddUsingsAndNamespace(StringBuilder sourceBuilder, string namespaceName)
+    private static void AddUsingsAndNamespace(StringBuilder sourceBuilder, string namespaceName)
     {
         sourceBuilder.AppendLine("using System;");
         sourceBuilder.AppendLine("using System.Text;");
@@ -23,13 +42,13 @@ public static class ToStringGeneratorHelper
         sourceBuilder.AppendLine();
     }
 
-    public static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className)
+    private static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className)
     {
         sourceBuilder.AppendLine($"{classAccessibility} partial class {className}");
         sourceBuilder.AppendLine("{");
     }
 
-    public static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, string defaultRedactionValue)
+    private static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, string defaultRedactionValue)
     {
         sourceBuilder.AppendLine($"   public override string ToString()");
         sourceBuilder.AppendLine("    {");
@@ -46,7 +65,7 @@ public static class ToStringGeneratorHelper
         sourceBuilder.AppendLine("}");
     }
     
-    public static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, string defaultRedactionValue)
+    private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, string defaultRedactionValue)
     {
         var firstMember = true;
         foreach (var member in members)
@@ -93,7 +112,7 @@ public static class ToStringGeneratorHelper
         }
     }
     
-    public static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
+    private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
     {
         if (isNullable)
         {
@@ -112,7 +131,7 @@ public static class ToStringGeneratorHelper
         }
     }
 
-    public static void AppendDictionaryContents(StringBuilder sourceBuilder, string memberName)
+    private static void AppendDictionaryContents(StringBuilder sourceBuilder, string memberName)
     {
         sourceBuilder.AppendLine("            sb.Append('[');");
         sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
@@ -139,7 +158,7 @@ public static class ToStringGeneratorHelper
         sourceBuilder.AppendLine("            sb.Append(']');");
     }
 
-    public static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
+    private static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
     {
         if (isNullable)
         {
@@ -158,7 +177,7 @@ public static class ToStringGeneratorHelper
         }
     }
 
-    public static void AppendEnumerableContents(StringBuilder sourceBuilder, string memberName)
+    private static void AppendEnumerableContents(StringBuilder sourceBuilder, string memberName)
     {
         sourceBuilder.AppendLine("            sb.Append('[');");
         sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
