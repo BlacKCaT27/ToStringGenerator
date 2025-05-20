@@ -110,7 +110,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [1, 2, 3], Scores = [[Alice, 100], [Bob, 90]], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [1, 2, 3], Scores = [{Alice, 100}, {Bob, 90}], Secrets = ***]", result);
         }
 
         [TestMethod]
