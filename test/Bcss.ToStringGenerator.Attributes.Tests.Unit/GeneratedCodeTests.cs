@@ -5,10 +5,17 @@ using Bcss.ToStringGenerator.TestData;
 
 namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
 {
-
+    /// <summary>
+    /// These tests act as a set of "client" tests for the generator library. Rather than testing the output of the source generator,
+    /// these tests assert on the output of the generated code itself.
+    /// </summary>
     [TestClass]
-    public class ToStringGeneratorTests
+    public class GeneratedCodeTests
     {
+        /// <summary>
+        /// Sanity check test to ensure that the generator is actually generating code.
+        /// Relies on a specific path to another test project, may need tweaking/removal/ignoring in builds.
+        /// </summary>
         [TestMethod]
         public void Generator_ProducesGeneratedCode()
         {

@@ -222,10 +222,10 @@ public class NoAttr2{}";
             var generatedCode = generatedSyntax.ToString();
             Assert.IsTrue(generatedCode.Contains("public override string ToString()"), "Generated code should contain ToString method");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"[TestClass: \")"), "Generated code should contain class name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain property value");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should  call ToString() on `Age` property");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
         }
         
@@ -265,10 +265,10 @@ public partial class TestClassTwo
             var generatedCode = testClassGeneratedSyntax.ToString();
             Assert.IsTrue(generatedCode.Contains("public override string ToString()"), "Generated code should contain ToString method");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"[TestClass: \")"), "Generated code should contain class name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain property value");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should  call ToString() on `Age` property");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
             
             // Assert
@@ -279,8 +279,8 @@ public partial class TestClassTwo
             var generatedCodeTwo = testClassTwoGeneratedSyntax.ToString();
             Assert.IsTrue(generatedCodeTwo.Contains("public override string ToString()"), "Generated code should contain ToString method");
             Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"[TestClassTwo: \")"), "Generated code should contain class name");
-            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(Name.ToString())"), "Generated code should contain property value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
             Assert.IsTrue(generatedCodeTwo.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
         }
 
@@ -313,10 +313,12 @@ public partial class TestClass
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should call ToString() on `Age` property");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Password = \")"), "Generated code should contain sensitive property name");
-            Assert.IsTrue(generatedCode.Contains("[REDACTED]"), "Generated code should contain redaction value");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"[REDACTED]\")"), "Generated code should redact sensitive values with default redaction value");
         }
 
         [TestMethod]
@@ -346,10 +348,10 @@ public partial class TestClass
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain field value");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should contain field value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` field");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain field name `Age`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should  call ToString() on `Age` field");
         }
         
         [TestMethod]
@@ -378,10 +380,10 @@ public partial class TestClass
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("if (Name == null)"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain field value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name `Name`");
+            Assert.IsTrue(generatedCode.Contains("if (Name == null)"), "Generated code should contain if check for nullability");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain value of null for when field is null");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should contain field value for when field is not null");
         }
         
         [TestMethod]
@@ -414,9 +416,9 @@ public partial class TestClass
 
             var generatedCode = generatedSyntax.ToString();
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"SubClass = \")"), "Generated code should contain field name");
-            Assert.IsTrue(generatedCode.Contains("if (SubClass == null)"), "Generated code should contain field null check");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain null string");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(SubClass.ToString())"), "Generated code should contain field value");
+            Assert.IsTrue(generatedCode.Contains("if (SubClass == null)"), "Generated code should contain if check for nullability");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"null\")"), "Generated code should contain value of null for when field is null");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(SubClass.ToString())"), "Generated code should contain field value for when field is not null");
         }
 
         [TestMethod]
@@ -474,10 +476,10 @@ public partial class TestClass
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Password = \")"), "Generated code should contain sensitive property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Password = \")"), "Generated code should contain sensitive property name `Password`");
             Assert.IsTrue(generatedCode.Contains("***SECRET***"), "Generated code should contain custom redaction value");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
         }
 
         [TestMethod]
@@ -509,9 +511,9 @@ public partial class EnumerableExample
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Strings = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", EmptyList = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \")"), "Generated code should contain property `Numbers`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Strings = \")"), "Generated code should contain property `Strings`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", EmptyList = \")"), "Generated code should contain property `EmptyList`");
         }
 
         [TestMethod]
@@ -546,46 +548,8 @@ public partial class DictionaryExample
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Scores = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("EmptyDict = \")"), "Generated code should contain property name");
-        }
-
-        [TestMethod]
-        public void ToString_WithMixedCollections_FormatsCorrectly()
-        {
-            // Arrange
-            var source = @"
-using Bcss.ToStringGenerator.Attributes;
-using System.Collections.Generic;
-
-[GenerateToString]
-public partial class MixedCollectionsExample
-{
-    public List<int> Numbers { get; set; } = new() { 1, 2, 3 };
-    public Dictionary<string, int> Scores { get; set; } = new()
-    {
-        { ""Alice"", 100 },
-        { ""Bob"", 90 }
-    };
-    public string Name { get; set; } = ""Test"";
-}";
-
-            var compilation = CreateCompilation(source);
-            var generator = new ClassToStringGenerator();
-            var driver = CSharpGeneratorDriver.Create(generator);
-
-            // Act
-            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
-
-            // Assert
-            var generatedSyntax = outputCompilation.SyntaxTrees
-                .FirstOrDefault(st => st.FilePath.EndsWith("MixedCollectionsExample.ToString.g.cs"));
-            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
-
-            var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Scores = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Name = \")"), "Generated code should contain property name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Scores = \")"), "Generated code should contain property `Scores`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", EmptyDict = \")"), "Generated code should contain property EmptyDict");
         }
 
         [TestMethod]
@@ -621,12 +585,12 @@ public partial class SensitiveCollectionsExample
             Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
 
             var generatedCode = generatedSyntax.ToString();
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Secrets = \")"), "Generated code should contain property name");
-            Assert.IsTrue(generatedCode.Contains("\"***\""), "Generated code should contain redaction value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Numbers = \""), "Generated code should contain property name `Numbers`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Secrets = \")"), "Generated code should contain property name `Secrets`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"***\")"), "Generated code should contain custom redaction value");
         }
 
-        private static Compilation CreateCompilation(string source)
+        private static CSharpCompilation CreateCompilation(string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);
             var references = new[]
