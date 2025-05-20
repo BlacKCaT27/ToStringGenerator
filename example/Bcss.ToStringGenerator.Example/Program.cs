@@ -1,46 +1,42 @@
 ﻿using Bcss.ToStringGenerator.Attributes;
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Bcss.ToStringGenerator.Example
 {
     [GenerateToString]
     public partial class User
     {
-        public string Test = "te";
-        public string Username { get; set; } = "john.doe";
+        public string? Username { get; set; }
+        
+        [SensitiveData] // Masks sensitive data - default value is '[REDACTED]'
+        public string? Password { get; set; }
 
-        [SensitiveData]
-        public string Password { get; set; } = "secret123";
+        [SensitiveData("***")] // Custom masking values supported
+        public string? CreditCardNumber { get; set; }
 
-        public int Age { get; set; } = 30;
-
-        [SensitiveData("***")]
-        public string CreditCardNumber { get; set; } = "4111111111111111";
-
-        [SensitiveData]
-        public string SSN { get; set; } = "123-45-6789";
-
-        public List<string> Addresses { get; set; } = new List<string> { "123 Main St", "Apt 4B", "New York, NY 10001" };
-
-        public Dictionary<string, string> Preferences { get; set; } = new Dictionary<string, string> { { "Color", "Blue" }, { "Font", "Arial" } };
-    }
-
-    [GenerateToString]
-    public partial class TestClass
-    {
-        public string Test { get; set; } = "test";
+        public List<string> Addresses { get; set; } = [];
+    
+        public Dictionary<string, string> Preferences {get; set; } = [];
     }
 
     class Program
     {
         static void Main(string[] args)
         {
-            var user = new User();
-            var test = new TestClass();
+            var user = new User
+            {
+                Username = "john.doe",
+                Password = "MySecretPassword",
+                CreditCardNumber = "WouldntYouLikeToKnow",
+                Addresses = ["123 Main St, Apt 4B, New York, NY 10001"],
+                Preferences = new Dictionary<string, string>
+                {
+                    {"Color", "Blue"}, {"Font", "Arial"}
+                }
+            };
             Console.WriteLine("User details:");
             Console.WriteLine(user.ToString());
             
-            Console.WriteLine("TestClass details:");
-            Console.WriteLine(test.ToString());
         }
     }
 }
