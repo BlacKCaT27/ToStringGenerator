@@ -1,6 +1,4 @@
-#define DEBUG
 using System.Collections.Immutable;
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -156,6 +154,7 @@ namespace Bcss.ToStringGenerator.Attributes
             {
                 var memberType = GetMemberType(memberSymbol);
                 var (isSensitive, mask) = IsSensitive(memberSymbol);
+                
                 result.Add(new MemberSymbolData(
                     memberSymbol.Name,
                     IsDictionary(memberType, compilation),
@@ -198,13 +197,13 @@ namespace Bcss.ToStringGenerator.Attributes
 
             if (sensitiveDataAttr is not null)
             {
-                return (true, GetCustomRedactionValue(symbol));
+                return (true, GetCustomRedactionValueFromAttributeArgs(symbol));
             }
 
             return (false, null);
         }
         
-        private static string? GetCustomRedactionValue(ISymbol member)
+        private static string? GetCustomRedactionValueFromAttributeArgs(ISymbol member)
         {
             var attributeSyntax = member.DeclaringSyntaxReferences
                 .SelectMany(r => r.GetSyntax().DescendantNodes())
@@ -239,110 +238,21 @@ namespace Bcss.ToStringGenerator.Attributes
             {
                 if (classData == null) continue;
 
-                var sourceCode = GenerateToStringMethod(classData.Value, defaultRedactionValue);
+                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData.Value, defaultRedactionValue);
                 var fileName = $"{classData.Value.ClassName}.ToString.g.cs";
 
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.AddSource(fileName, sourceCode);
             }
         }
-
-        private static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)
-        {
-            var sourceBuilder = new StringBuilder();
-            AddUsingsAndNamespace(sourceBuilder, classSymbolData.ContainingNamespace);
-            AddTypeDeclaration(sourceBuilder, classSymbolData.ClassAccessibility, classSymbolData.ClassName);
-            AddToStringMethod(sourceBuilder, classSymbolData, defaultRedactionValue);
-            return sourceBuilder.ToString();
-        }
-
-        private static void AddUsingsAndNamespace(StringBuilder sourceBuilder, string namespaceName)
-        {
-            sourceBuilder.AppendLine("using System;");
-            sourceBuilder.AppendLine("using System.Text;");
-            sourceBuilder.AppendLine("using System.Collections.Generic;");
-            sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"namespace {namespaceName};");
-            sourceBuilder.AppendLine();
-        }
-
-        private static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className)
-        {
-            sourceBuilder.AppendLine($"{classAccessibility} partial class {className}");
-            sourceBuilder.AppendLine("{");
-        }
-
-        private static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, string defaultRedactionValue)
-        {
-            sourceBuilder.AppendLine($"   public override string ToString()");
-            sourceBuilder.AppendLine("    {");
-            sourceBuilder.AppendLine("        var sb = new StringBuilder();");
-            sourceBuilder.AppendLine($"        sb.Append(\"[{classSymbolData.ClassName}: \");");
-            sourceBuilder.AppendLine();
-
-            AppendMembers(sourceBuilder, classSymbolData.Members, defaultRedactionValue);
-
-            sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine("        sb.Append(\"]\");");
-            sourceBuilder.AppendLine("        return sb.ToString();");
-            sourceBuilder.AppendLine("    }");
-            sourceBuilder.AppendLine("}");
-        }
-
+        
         private static IEnumerable<ISymbol> GetPublicMembers(ISymbol typeSymbol)
         {
             return ((INamespaceOrTypeSymbol)typeSymbol).GetMembers()
                 .Where(m => m.Kind is SymbolKind.Property or SymbolKind.Field &&
                             m is { DeclaredAccessibility: Accessibility.Public, IsStatic: false });
         }
-
-        private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, string defaultRedactionValue)
-        {
-            var firstMember = true;
-            foreach (var member in members)
-            {
-                var memberName = member.MemberName;
-                var separator = firstMember ? "" : ", ";
-                sourceBuilder.AppendLine($"        sb.Append(\"{separator}{memberName} = \");");
-
-                if (member.IsSensitive)
-                {
-                    sourceBuilder.AppendLine($"        sb.Append(\"{member.Mask ?? defaultRedactionValue}\");");
-                }
-                else
-                {
-                    if (member.IsDictionary)
-                    {
-                        AppendDictionaryValue(sourceBuilder, memberName, member.IsNullableType);
-                    }
-                    else if (member.IsEnumerable)
-                    {
-                        AppendEnumerableValue(sourceBuilder, memberName, member.IsNullableType);
-                    }
-                    else
-                    {
-                        if (member.IsNullableType)
-                        {
-                            sourceBuilder.AppendLine($"        if ({memberName} == null)");
-                            sourceBuilder.AppendLine("        {");
-                            sourceBuilder.AppendLine("            sb.Append(\"null\");");
-                            sourceBuilder.AppendLine("        }");
-                            sourceBuilder.AppendLine("        else");
-                            sourceBuilder.AppendLine("        {");
-                            sourceBuilder.AppendLine($"            sb.Append({memberName}.ToString());");
-                            sourceBuilder.AppendLine("        }");
-                        }
-                        else
-                        {
-                            sourceBuilder.AppendLine($"        sb.Append({memberName}.ToString());");
-                        }
-                    }
-                }
-                
-                firstMember = false;
-            }
-        }
-
+        
         private static bool IsDictionary(ITypeSymbol type, Compilation compilation)
         {
             // Check for both generic and non-generic IEnumerable
@@ -389,88 +299,6 @@ namespace Bcss.ToStringGenerator.Attributes
 
             // Check if it's a reference type (all reference types are nullable in C# 9.0+ with nullable reference types enabled)
             return type.IsReferenceType && type.NullableAnnotation != NullableAnnotation.NotAnnotated;
-        }
-
-        private static void AppendDictionaryValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
-        {
-            if (isNullable)
-            {
-                sourceBuilder.AppendLine($"        if ({memberName} == null)");
-                sourceBuilder.AppendLine("        {");
-                sourceBuilder.AppendLine("            sb.Append(\"null\");");
-                sourceBuilder.AppendLine("        }");
-                sourceBuilder.AppendLine("        else");
-                sourceBuilder.AppendLine("        {");
-                AppendDictionaryContents(sourceBuilder, memberName);
-                sourceBuilder.AppendLine("        }");
-            }
-            else
-            {
-                AppendDictionaryContents(sourceBuilder, memberName);
-            }
-        }
-
-        private static void AppendDictionaryContents(StringBuilder sourceBuilder, string memberName)
-        {
-            sourceBuilder.AppendLine("            sb.Append('[');");
-            sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
-            sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
-            sourceBuilder.AppendLine("            {");
-            sourceBuilder.AppendLine($"                var pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                sb.Append('{');");
-            sourceBuilder.AppendLine("                sb.Append(pair.Key.ToString());");
-            sourceBuilder.AppendLine("                sb.Append(\", \");");
-            sourceBuilder.AppendLine("                sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                sb.Append('}');");
-            sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"                while ({memberName}Enumerator.MoveNext())");
-            sourceBuilder.AppendLine("                {");
-            sourceBuilder.AppendLine("                    sb.Append(\", \");");
-            sourceBuilder.AppendLine($"                    pair = {memberName}Enumerator.Current;");
-            sourceBuilder.AppendLine("                    sb.Append('{');");
-            sourceBuilder.AppendLine("                    sb.Append(pair.Key.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append(\", \");");
-            sourceBuilder.AppendLine("                    sb.Append(pair.Value.ToString());");
-            sourceBuilder.AppendLine("                    sb.Append('}');");
-            sourceBuilder.AppendLine("                }");
-            sourceBuilder.AppendLine("            }");
-            sourceBuilder.AppendLine("            sb.Append(']');");
-        }
-
-        private static void AppendEnumerableValue(StringBuilder sourceBuilder, string memberName, bool isNullable)
-        {
-            if (isNullable)
-            {
-                sourceBuilder.AppendLine($"        if ({memberName} == null)");
-                sourceBuilder.AppendLine("        {");
-                sourceBuilder.AppendLine("            sb.Append(\"null\");");
-                sourceBuilder.AppendLine("        }");
-                sourceBuilder.AppendLine("        else");
-                sourceBuilder.AppendLine("        {");
-                AppendEnumerableContents(sourceBuilder, memberName);
-                sourceBuilder.AppendLine("        }");
-            }
-            else
-            {
-                AppendEnumerableContents(sourceBuilder, memberName);
-            }
-        }
-
-        private static void AppendEnumerableContents(StringBuilder sourceBuilder, string memberName)
-        {
-            sourceBuilder.AppendLine("            sb.Append('[');");
-            sourceBuilder.AppendLine($"            var {memberName}Enumerator = {memberName}.GetEnumerator();");
-            sourceBuilder.AppendLine($"            if ({memberName}Enumerator.MoveNext())");
-            sourceBuilder.AppendLine("            {");
-            sourceBuilder.AppendLine($"                sb.Append({memberName}Enumerator.Current.ToString());");
-            sourceBuilder.AppendLine();
-            sourceBuilder.AppendLine($"                while ({memberName}Enumerator.MoveNext())");
-            sourceBuilder.AppendLine("                {");
-            sourceBuilder.AppendLine("                    sb.Append(\", \");");
-            sourceBuilder.AppendLine($"                    sb.Append({memberName}Enumerator.Current.ToString());");
-            sourceBuilder.AppendLine("                }");
-            sourceBuilder.AppendLine("            }");
-            sourceBuilder.AppendLine("            sb.Append(']');");
         }
     }
 }

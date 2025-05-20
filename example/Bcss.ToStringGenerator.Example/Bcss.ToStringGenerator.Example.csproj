@@ -10,7 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <ToStringGeneratorRedactedValue>ASDFSDF</ToStringGeneratorRedactedValue>
+    <!--<ToStringGeneratorRedactedValue>*</ToStringGeneratorRedactedValue>-->
     
     <!-- Uncomment this constants definition to disable automatic source generation of marker interfaces used by the source generator -->
     <!-- <DefineConstants>GENERATE_TO_STRING_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants> -->
