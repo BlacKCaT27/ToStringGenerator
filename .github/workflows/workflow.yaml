@@ -30,13 +30,35 @@ jobs:
     
     - name: Test with coverage
       run: dotnet test --no-build --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=coverage.cobertura.xml /p:Threshold=80
-      
+
+    - name: Find coverage file
+      id: find-coverage
+      run: |
+        COVERAGE_FILE=$(find . -name "coverage.cobertura.xml" -type f | head -n 1)
+        if [ -n "$COVERAGE_FILE" ]; then
+          echo "Found coverage file at: $COVERAGE_FILE"
+          echo "coverage_file=$COVERAGE_FILE" >> $GITHUB_OUTPUT
+        else
+          echo "No coverage file found"
+          find . -name "*.xml" -type f
+          exit 1
+        fi
+
     - name: Generate coverage report
-      uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
-      with:
-        reports: 'coverage.cobertura.xml'
-        targetdir: 'coveragereport'
-        reporttypes: 'HtmlInline;Cobertura'
+      if: steps.find-coverage.outputs.coverage_file != ''
+      run: |
+        dotnet tool install -g dotnet-reportgenerator-globaltool
+        reportgenerator \
+          -reports:"${{ steps.find-coverage.outputs.coverage_file }}" \
+          -targetdir:coveragereport \
+          -reporttypes:HtmlInline
+          
+          #    - name: Generate coverage report
+#      uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
+#      with:
+#        reports: 'coverage.cobertura.xml'
+#        targetdir: 'coveragereport'
+#        reporttypes: 'HtmlInline;Cobertura'
         
     - name: Upload coverage report
       uses: actions/upload-artifact@v4
