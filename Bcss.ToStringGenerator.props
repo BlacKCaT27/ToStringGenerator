@@ -1,0 +1,7 @@
+﻿<!-- This file exposes msbuild properties to consumers of the ToStringGenerator NuGet package. When adding a new
+ msbuild property to configure functionality in this repository, be sure to include a new entry here. -->
+<Project>
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
+    </ItemGroup>
+</Project>

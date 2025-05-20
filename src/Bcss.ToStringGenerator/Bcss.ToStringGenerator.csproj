@@ -16,6 +16,10 @@
     <DevelopmentDependency>true</DevelopmentDependency>
   </PropertyGroup>
 
+  <PropertyGroup Label="Config">
+    <ToStringGeneratorRedactedValue>*****</ToStringGeneratorRedactedValue>
+  </PropertyGroup>
+  
   <ItemGroup Label="Deps">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" Version="4.13.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" Version="3.11.0">
@@ -32,6 +36,9 @@
   </ItemGroup>
   
   <ItemGroup Label="Packaging">
+    <None Include="../../Bcss.ToStringGenerator.props" Visible="false"
+          Pack="true" PackagePath="build" />
+    
     <!-- Pack the generator dll in the analyzers/dotnet/cs path -->
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 

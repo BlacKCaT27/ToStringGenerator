@@ -1,5 +1,8 @@
 namespace Bcss.ToStringGenerator;
 
+/// <summary>
+/// A struct containing all the data needed to generate a ToString() method for a class.
+/// </summary>
 public readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
 {
     public string ContainingNamespace { get; }
@@ -7,6 +10,13 @@ public readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
     public string ClassName { get; }
     public List<MemberSymbolData> Members { get; }
 
+    /// <summary>
+    /// Instantiates a new instance of <see cref="ClassSymbolData"/>.
+    /// </summary>
+    /// <param name="containingNamespace">The namespace of the class whose ToString method is to be generated.</param>
+    /// <param name="classAccessibility">The accessibility level of the class whose ToString method is to be generated.</param>
+    /// <param name="className">The name of the class whose ToString method is to be generated.</param>
+    /// <param name="members">A collection of <see cref="MemberSymbolData"/> containing information about each member to be recorded in the ToString method.</param>
     public ClassSymbolData(string containingNamespace, string classAccessibility, string className, List<MemberSymbolData> members)
     {
         ContainingNamespace = containingNamespace;
