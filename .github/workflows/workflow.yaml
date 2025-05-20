@@ -50,12 +50,3 @@ jobs:
           echo "Code coverage is below 80%"
           exit 1
         fi
-
-    - name: Send mail on failure
-      if: failure()
-      uses: cinotify/github-action@main
-      with:
-        to: 'bcssdeveloper@gmail.com'
-        subject: 'Build of branch "main" failed for "$GITHUB_ACTION_REPOSITORY"'
-        body: '<em>Build failure for repository. Please see Github Workflows page for more details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID</em>'
-        type: 'text/html'
