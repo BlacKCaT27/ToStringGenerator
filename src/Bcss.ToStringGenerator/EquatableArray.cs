@@ -1,9 +1,9 @@
 // ReSharper disable NotDisposedResourceIsReturned
-namespace Bcss.ToStringGenerator.Generators;
-using System;
+
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Immutable;
+
+namespace Bcss.ToStringGenerator;
 
 internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnumerable<T>
     where T : IEquatable<T>

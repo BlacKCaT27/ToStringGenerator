@@ -1,4 +1,4 @@
-namespace Bcss.ToStringGenerator.Generators;
+namespace Bcss.ToStringGenerator;
 
 /// <summary>
 /// Class containing names for different stages of the ToString generator.

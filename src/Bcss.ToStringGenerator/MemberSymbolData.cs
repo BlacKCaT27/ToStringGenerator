@@ -1,6 +1,4 @@
-using System.Runtime.CompilerServices;
-
-namespace Bcss.ToStringGenerator.Generators;
+namespace Bcss.ToStringGenerator;
 
 public readonly struct MemberSymbolData : IEquatable<MemberSymbolData>
 {

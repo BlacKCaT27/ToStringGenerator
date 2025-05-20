@@ -1,6 +1,5 @@
 using System.Text;
 using Bcss.ToStringGenerator.Attributes;
-using Bcss.ToStringGenerator.Generators;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;

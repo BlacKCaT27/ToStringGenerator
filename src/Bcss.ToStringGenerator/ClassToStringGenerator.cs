@@ -1,9 +1,10 @@
+#define DEBUG
+using System.Collections.Immutable;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Text;
-using System.Collections.Immutable;
 
-namespace Bcss.ToStringGenerator.Generators
+namespace Bcss.ToStringGenerator
 {
     [Generator]
     public class ClassToStringGenerator : IIncrementalGenerator
@@ -22,7 +23,10 @@ namespace Bcss.ToStringGenerator.Generators
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
             
             context.RegisterSourceOutput(combined,
-                (spc, tuple) => Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Types));
+                (spc, tuple) =>
+                {
+                    Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Types);
+                });
         }
 
         private static void GenerateMarkerAttributes(IncrementalGeneratorInitializationContext context)
@@ -109,15 +113,7 @@ namespace Bcss.ToStringGenerator.Attributes
         private static IncrementalValueProvider<string> GetDefaultRedactionConfig(IncrementalGeneratorInitializationContext context)
         {
             return context.AnalyzerConfigOptionsProvider
-                .Select((provider, _) =>
-                {
-                    if (provider.GlobalOptions.TryGetValue(ConfigurationKey, out var value))
-                    {   
-                        return value;
-                    }
-
-                    return DefaultRedactionValue;
-                })
+                .Select((provider, _) => provider.GlobalOptions.TryGetValue(ConfigurationKey, out var value) ? value : DefaultRedactionValue)
                 .WithTrackingName(TrackingNames.ReadConfig);
         }
 
