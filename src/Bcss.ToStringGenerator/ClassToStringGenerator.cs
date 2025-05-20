@@ -20,9 +20,8 @@ namespace Bcss.ToStringGenerator.Generators
             var typeDeclarations = GetTypeDeclarations(context);
             var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
             
-            context.RegisterSourceOutput(
-                combined.Combine(context.CompilationProvider),
-                (spc, tuple) => Execute(spc, tuple.Left.DefaultRedaction ?? string.Empty, tuple.Left.Type));
+            context.RegisterSourceOutput(combined,
+                (spc, tuple) => Execute(spc, tuple.DefaultRedaction ?? string.Empty, tuple.Type));
         }
 
         private static void GenerateMarkerAttributes(IncrementalGeneratorInitializationContext context)
