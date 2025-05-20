@@ -31,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{CC8E
 		README.md = README.md
 		Bcss.ToStringGenerator.props = Bcss.ToStringGenerator.props
 		Directory.Build.props = Directory.Build.props
+		.github\workflows\workflow.yaml = .github\workflows\workflow.yaml
 	EndProjectSection
 EndProject
 Global

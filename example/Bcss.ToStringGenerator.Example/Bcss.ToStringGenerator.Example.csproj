@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bcss.ToStringGenerator\Bcss.ToStringGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
+    <!--<PackageReference Include="Bcss.ToStringGenerator" Version="1.0.0" />-->
   </ItemGroup>
 
   <PropertyGroup>
