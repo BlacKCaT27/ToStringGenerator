@@ -27,26 +27,99 @@ jobs:
     
     - name: Build
       run: dotnet build --no-restore
-    
-    - name: Test with coverage
-      run: mkdir TestResults && dotnet test --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./TestResults/coverage.cobertura.xml /p:Threshold=80
 
-    - name: Generate coverage report
-      uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
-      with:
-        reports: './TestResults/coverage.cobertura.xml'
-        targetdir: 'coveragereport'
-        reporttypes: 'HtmlInline;Cobertura'
+    - name: Create coverage results directory
+      run: mkdir -p coverage-results
+
+    - name: Find test projects
+      id: find-test-projects
+      run: |
+        TEST_PROJECTS=$(find . -name "*.Tests.csproj" -o -name "*Tests.csproj" -o -name "*.Test.csproj" -o -name "*Test.csproj" | tr '\n' ' ')
+        echo "Found test projects: $TEST_PROJECTS"
+        echo "test_projects=$TEST_PROJECTS" >> $GITHUB_OUTPUT
+
+    - name: Run tests with coverage
+      run: |
+        # Get all test projects
+        TEST_PROJECTS="${{ steps.find-test-projects.outputs.test_projects }}"
         
+        # Initialize merged coverage file
+        echo '<?xml version="1.0" encoding="utf-8"?><CoverageSession/>' > coverage-results/merged.cobertura.xml
+        
+        # Run tests and collect coverage for each project
+        for PROJECT in $TEST_PROJECTS; do
+          echo "Running tests for $PROJECT"
+          PROJECT_NAME=$(basename "$PROJECT" .csproj)
+          dotnet test "$PROJECT" \
+            --no-build \
+            --verbosity normal \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput="../../coverage-results/$PROJECT_NAME.cobertura.xml" \
+            /p:CoverletOutputFormat=cobertura
+        done
+        
+        # List generated coverage files
+        echo "Generated coverage files:"
+        ls -la coverage-results/
+
+    - name: Merge coverage reports
+      run: |
+        # Find all coverage files
+        COVERAGE_FILES=$(find ./coverage-results -name "*.cobertura.xml" | tr '\n' ';')
+        
+        if [ -z "$COVERAGE_FILES" ]; then
+          echo "No coverage files found to merge!"
+          exit 1
+        fi
+        
+        echo "Found coverage files: $COVERAGE_FILES"
+        
+        # Merge coverage files
+        reportgenerator \
+          -reports:"$COVERAGE_FILES" \
+          -targetdir:"./coverage-results/merged" \
+          -reporttypes:"Cobertura;HtmlInline"
+        
+        # Verify merged file was created
+        if [ -f "./coverage-results/merged/Cobertura.xml" ]; then
+          echo "Successfully merged coverage files"
+          cp ./coverage-results/merged/Cobertura.xml ./coverage-results/merged.cobertura.xml
+        else
+          echo "Failed to merge coverage files"
+          exit 1
+        fi
+
+    - name: Generate HTML coverage report
+      run: |
+        reportgenerator \
+          -reports:"./coverage-results/merged.cobertura.xml" \
+          -targetdir:"./coverage-report" \
+          -reporttypes:"HtmlInline;HtmlSummary"
+
     - name: Upload coverage report
       uses: actions/upload-artifact@v4
       with:
         name: CoverageReport
-        path: coveragereport
+        path: ./coverage-report
 
     - name: Check coverage threshold
       run: |
-        if [[ $(grep -o 'line-rate="[0-9.]*"' **/TestResults/coverage.cobertura.xml | grep -o '[0-9.]*' | awk '{ print int($1 * 100) }') -lt 80 ]]; then
-          echo "Code coverage is below 80%"
+        COVERAGE_FILE="./coverage-results/merged.cobertura.xml"
+        
+        if [ -f "$COVERAGE_FILE" ]; then
+          # Extract line coverage percentage
+          LINE_RATE=$(grep -o 'line-rate="[0-9.]*"' "$COVERAGE_FILE" | head -n 1 | grep -o '[0-9.]*')
+          COVERAGE_PERCENT=$(awk "BEGIN {print int($LINE_RATE * 100)}")
+        
+          echo "Code coverage: $COVERAGE_PERCENT%"
+        
+          if [ "$COVERAGE_PERCENT" -lt 80 ]; then
+            echo "Code coverage is below 80%"
+            exit 1
+          else
+            echo "Code coverage requirement met ($COVERAGE_PERCENT%)"
+          fi
+        else
+          echo "Merged coverage file not found at $COVERAGE_FILE"
           exit 1
         fi
