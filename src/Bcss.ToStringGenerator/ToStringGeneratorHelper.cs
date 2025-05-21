@@ -17,18 +17,18 @@ internal static class ToStringGeneratorHelper
     /// The class metadata used to construct the ToString() method, including namespace,
     /// accessibility, class name, and its members.
     /// </param>
-    /// <param name="defaultRedactionValue">
-    /// The default value to use for redacted or sensitive fields in the generated ToString() method.
+    /// <param name="toStringGeneratorConfigOptions">
+    /// <see cref="ToStringGeneratorConfigOptions"/> containing configuration parameters for the ToString generator./>
     /// </param>
     /// <returns>
     /// A string containing the generated source code for the ToString() method of the specified class.
     /// </returns>
-    internal static string GenerateToStringMethod(ClassSymbolData classSymbolData, string defaultRedactionValue)
+    internal static string GenerateToStringMethod(ClassSymbolData classSymbolData, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions)
     {
         var sourceBuilder = new StringBuilder();
         AddUsingsAndNamespace(sourceBuilder, classSymbolData.ContainingNamespace);
         AddTypeDeclaration(sourceBuilder, classSymbolData.ClassAccessibility, classSymbolData.ClassName);
-        AddToStringMethod(sourceBuilder, classSymbolData, defaultRedactionValue);
+        AddToStringMethod(sourceBuilder, classSymbolData, toStringGeneratorConfigOptions);
         return sourceBuilder.ToString();
     }
 
@@ -52,7 +52,7 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine("{");
     }
 
-    private static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, string defaultRedactionValue)
+    private static void AddToStringMethod(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions)
     {
         sourceBuilder.AppendLine("    /// <summary>");
         sourceBuilder.AppendLine("    /// Converts this class to a string representation containing the objects fields and properties.");
@@ -63,7 +63,7 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine($"        sb.Append(\"[{classSymbolData.ClassName}: \");");
         sourceBuilder.AppendLine();
 
-        AppendMembers(sourceBuilder, classSymbolData.Members, defaultRedactionValue);
+        AppendMembers(sourceBuilder, classSymbolData.Members, toStringGeneratorConfigOptions);
 
         sourceBuilder.AppendLine();
         sourceBuilder.AppendLine("        sb.Append(\"]\");");
@@ -72,18 +72,28 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine("}");
     }
     
-    private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, string defaultRedactionValue)
+    private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions)
     {
         var firstMember = true;
         foreach (var member in members)
         {
+            if (member.MemberAccessibility == "private" && toStringGeneratorConfigOptions.HidePrivateMembers)
+            {
+                firstMember = false;
+                continue;
+            }
+
             var memberName = member.MemberName;
             var separator = firstMember ? "" : ", ";
-            sourceBuilder.AppendLine($"        sb.Append(\"{separator}{memberName} = \");");
 
+            // Include asterisks to denote static members.
+            sourceBuilder.AppendLine(member.IsStatic
+                ? $"        sb.Append(\"{separator}*{memberName}* = \");"
+                : $"        sb.Append(\"{separator}{memberName} = \");");
+            
             if (member.IsSensitive)
             {
-                sourceBuilder.AppendLine($"        sb.Append(\"{member.Mask ?? defaultRedactionValue}\");");
+                sourceBuilder.AppendLine($"        sb.Append(\"{member.Mask ?? toStringGeneratorConfigOptions.RedactionValue}\");");
             }
             else
             {

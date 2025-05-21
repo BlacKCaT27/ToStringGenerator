@@ -10,8 +10,8 @@ namespace Bcss.ToStringGenerator
     [Generator]
     public class ClassToStringGenerator : IIncrementalGenerator
     {
-        private const string DefaultRedactionValue = "[REDACTED]";
-        private const string ConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
+        private const string HidePrivateMembersConfigurationKey = "build_property.ToStringGeneratorHidePrivateMembers";
+        private const string RedactedValueConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
         
         private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
 
@@ -22,14 +22,14 @@ namespace Bcss.ToStringGenerator
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             GenerateMarkerAttributes(context);
-            var defaultRedactionConfig = GetDefaultRedactionConfigProvider(context);
+            var configOptions = GetToStringGeneratorConfigOptionsProvider(context);
             var typeDeclarations = GetTypeDeclarationsProvider(context);
-            var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
+            var combined = CombineProviders(typeDeclarations, configOptions);
             
             context.RegisterSourceOutput(combined,
                 (spc, tuple) =>
                 {
-                    Execute(spc, tuple.DefaultRedaction ?? DefaultRedactionValue, tuple.Types);
+                    Execute(spc, tuple.ConfigOptions!, tuple.Types);
                 });
         }
 
@@ -124,11 +124,29 @@ namespace Bcss.ToStringGenerator.Attributes
             });
         }
 
-        private static IncrementalValueProvider<string> GetDefaultRedactionConfigProvider(
+        private static IncrementalValueProvider<ToStringGeneratorConfigOptions> GetToStringGeneratorConfigOptionsProvider(
             IncrementalGeneratorInitializationContext context)
         {
             return context.AnalyzerConfigOptionsProvider
-                .Select((provider, _) => provider.GlobalOptions.TryGetValue(ConfigurationKey, out var value) ? value : DefaultRedactionValue)
+                .Select((provider, _) =>
+                {
+                    ToStringGeneratorConfigOptions config = new();
+                    if (provider.GlobalOptions.TryGetValue(RedactedValueConfigurationKey, out var redactionValue))
+                    {
+                        config.RedactionValue = redactionValue;
+                    }
+                    
+                    if (provider.GlobalOptions.TryGetValue(HidePrivateMembersConfigurationKey, out var hidePrivateMembers))
+                    {
+                        bool didParse = bool.TryParse(hidePrivateMembers, out bool parsedBool);
+                        if (didParse)
+                        {
+                            config.HidePrivateMembers = parsedBool;
+                        }
+                    }
+
+                    return config;
+                })
                 .WithTrackingName(TrackingNames.ReadConfig);
         }
 
@@ -142,23 +160,23 @@ namespace Bcss.ToStringGenerator.Attributes
                 .WithTrackingName(TrackingNames.InitialExtraction);
         }
 
-        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData?> Types, string DefaultRedaction)> CombineProviders(
-            IncrementalValuesProvider<ClassSymbolData?> typeDeclarations,
-            IncrementalValueProvider<string> defaultRedactionConfig)
+        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData?> Types, ToStringGeneratorConfigOptions ConfigOptions)> CombineProviders(
+            IncrementalValuesProvider<ClassSymbolData?> typeDeclarationsProvider,
+            IncrementalValueProvider<ToStringGeneratorConfigOptions> configOptionsProvider)
         {
-            return typeDeclarations
+            return typeDeclarationsProvider
                 .Collect()
-                .Combine(defaultRedactionConfig)
+                .Combine(configOptionsProvider)
                 .WithTrackingName(TrackingNames.CombineProviders);
         }
 
-        private static void Execute(SourceProductionContext context, string defaultRedactionValue, ImmutableArray<ClassSymbolData?> classSymbolData)
+        private static void Execute(SourceProductionContext context, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, ImmutableArray<ClassSymbolData?> classSymbolData)
         {
             foreach (var classData in classSymbolData)
             {
                 if (classData == null) continue;
 
-                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData.Value, defaultRedactionValue);
+                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData.Value, toStringGeneratorConfigOptions);
                 var fileName = $"{classData.Value.ClassName}.ToString.g.cs";
 
                 context.CancellationToken.ThrowIfCancellationRequested();
@@ -181,7 +199,7 @@ namespace Bcss.ToStringGenerator.Attributes
             string containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
             string classAccessibility = GetAccessibility(typeSymbol);
             string className = typeSymbol.Name;
-            var memberSymbols = GetPublicMembers(typeSymbol);
+            var memberSymbols = GetMemberSymbols(typeSymbol);
             var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
 
             return new ClassSymbolData(containingNamespace, classAccessibility, className, members);
@@ -193,15 +211,18 @@ namespace Bcss.ToStringGenerator.Attributes
 
             foreach (var memberSymbol in memberSymbols)
             {
+                var memberAccessibility = GetAccessibility(memberSymbol);
                 var memberType = GetMemberType(memberSymbol);
                 var (isSensitive, mask) = IsSensitive(memberSymbol);
                 
                 result.Add(new MemberSymbolData(
                     memberSymbol.Name,
+                    memberAccessibility,
                     IsDictionary(memberType, compilation),
                     IsEnumerable(memberType, compilation),
                     IsNullableType(memberSymbol),
                     isSensitive,
+                    memberSymbol.IsStatic,
                     mask));
             }
 
@@ -253,14 +274,28 @@ namespace Bcss.ToStringGenerator.Attributes
                 }
             }
 
-            return (true, DefaultRedactionValue);
+            return (true, null);
         }
         
-        private static IEnumerable<ISymbol> GetPublicMembers(ISymbol typeSymbol)
+        private static IEnumerable<ISymbol> GetMemberSymbols(ISymbol typeSymbol)
         {
-            return ((INamespaceOrTypeSymbol)typeSymbol).GetMembers()
-                .Where(m => m.Kind is SymbolKind.Property or SymbolKind.Field &&
-                            m is { DeclaredAccessibility: Accessibility.Public, IsStatic: false });
+            List<ISymbol> result = [];
+            ImmutableArray<ISymbol> membersForType = ((INamespaceOrTypeSymbol)typeSymbol).GetMembers();
+            foreach (var symbol in membersForType)
+            {
+                if (symbol.Kind == SymbolKind.Property)
+                {
+                    result.Add(symbol);
+                    continue;
+                }
+
+                if (symbol is IFieldSymbol { AssociatedSymbol: null, Kind: SymbolKind.Field })
+                {
+                    result.Add(symbol);
+                }
+            }
+
+            return result;
         }
         
         private static bool IsDictionary(ITypeSymbol type, Compilation compilation)

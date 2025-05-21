@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
+    <CompilerVisibleProperty Include="ToStringGeneratorHidePrivateMembers" />
 
     <!-- Reference the attributes project from the generator to compile against them -->
     <ProjectReference Include="..\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" PrivateAssets="all" />

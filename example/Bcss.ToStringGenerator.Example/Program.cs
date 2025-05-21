@@ -6,6 +6,8 @@ namespace Bcss.ToStringGenerator.Example
     [GenerateToString]
     public partial class User
     {
+        public string PublicField = "publicField";
+        
         public string? Username { get; set; }
         
         [SensitiveData] // Masks sensitive data - default value is '[REDACTED]'
@@ -17,6 +19,10 @@ namespace Bcss.ToStringGenerator.Example
         public List<string> Addresses { get; set; } = [];
     
         public Dictionary<string, string> Preferences {get; set; } = [];
+        
+        private string myPrivateProperty { get; set; } = "privateProperty";
+
+        private string myPrivateField = "privateField";
     }
 
     class Program
