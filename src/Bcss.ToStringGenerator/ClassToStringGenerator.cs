@@ -150,7 +150,7 @@ namespace Bcss.ToStringGenerator.Attributes
                 .WithTrackingName(TrackingNames.ReadConfig);
         }
 
-        private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarationsProvider(IncrementalGeneratorInitializationContext context)
+        private static IncrementalValuesProvider<ClassSymbolData> GetTypeDeclarationsProvider(IncrementalGeneratorInitializationContext context)
         {
             return context.SyntaxProvider
                 .ForAttributeWithMetadataName(
@@ -160,8 +160,8 @@ namespace Bcss.ToStringGenerator.Attributes
                 .WithTrackingName(TrackingNames.InitialExtraction);
         }
 
-        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData?> Types, ToStringGeneratorConfigOptions ConfigOptions)> CombineProviders(
-            IncrementalValuesProvider<ClassSymbolData?> typeDeclarationsProvider,
+        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData> Types, ToStringGeneratorConfigOptions ConfigOptions)> CombineProviders(
+            IncrementalValuesProvider<ClassSymbolData> typeDeclarationsProvider,
             IncrementalValueProvider<ToStringGeneratorConfigOptions> configOptionsProvider)
         {
             return typeDeclarationsProvider
@@ -170,35 +170,27 @@ namespace Bcss.ToStringGenerator.Attributes
                 .WithTrackingName(TrackingNames.CombineProviders);
         }
 
-        private static void Execute(SourceProductionContext context, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, ImmutableArray<ClassSymbolData?> classSymbolData)
+        private static void Execute(SourceProductionContext context, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, ImmutableArray<ClassSymbolData> classSymbolData)
         {
             foreach (var classData in classSymbolData)
             {
-                if (classData == null) continue;
+                context.CancellationToken.ThrowIfCancellationRequested();
 
-                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData.Value, toStringGeneratorConfigOptions);
-                var fileName = $"{classData.Value.ClassName}.ToString.g.cs";
+                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData, toStringGeneratorConfigOptions, context.CancellationToken);
+                var fileName = $"{classData.ClassName}.ToString.g.cs";
 
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.AddSource(fileName, sourceCode);
             }
         }
         
-        private static ClassSymbolData? GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
+        private static ClassSymbolData GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
         {
-            var targetNode = ctx.Attributes
-                .Any(attr => attr.AttributeClass?.ToDisplayString() == GenerateToStringAttributeName)
-                ? ctx.TargetNode
-                : null;
+            var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(ctx.TargetNode) ?? throw new ArgumentException("Could not get symbol for target node.");
 
-            if (targetNode is null) return null;
-
-            var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(targetNode);
-            if (typeSymbol is null) return null;
-
-            string containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-            string classAccessibility = GetAccessibility(typeSymbol);
-            string className = typeSymbol.Name;
+            var containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+            var classAccessibility = GetAccessibility(typeSymbol);
+            var className = typeSymbol.Name;
             var memberSymbols = GetMemberSymbols(typeSymbol);
             var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
 
@@ -280,7 +272,7 @@ namespace Bcss.ToStringGenerator.Attributes
         private static IEnumerable<ISymbol> GetMemberSymbols(ISymbol typeSymbol)
         {
             List<ISymbol> result = [];
-            ImmutableArray<ISymbol> membersForType = ((INamespaceOrTypeSymbol)typeSymbol).GetMembers();
+            var membersForType = ((INamespaceOrTypeSymbol)typeSymbol).GetMembers();
             foreach (var symbol in membersForType)
             {
                 if (symbol.Kind == SymbolKind.Property)
@@ -304,13 +296,20 @@ namespace Bcss.ToStringGenerator.Attributes
             var dictionaryType = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
             var dictionaryInterface = compilation.GetTypeByMetadataName("System.Collections.IDictionary");
             
-            if (dictionaryType == null || dictionaryInterface == null) 
+            if (dictionaryType == null || dictionaryInterface == null)
                 return false;
 
-            // Check if the type implements IEnumerable<T> or IEnumerable
-            return type.AllInterfaces.Any(i => 
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryType) ||
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryInterface));
+            // Check if the type implements Dictionary<T> or IDictionary
+            foreach (var i in type.AllInterfaces)
+            {
+                if (SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryType) ||
+                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryInterface))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsEnumerable(ITypeSymbol type, Compilation compilation)
@@ -327,9 +326,16 @@ namespace Bcss.ToStringGenerator.Attributes
                 return false;
 
             // Check if the type implements IEnumerable<T> or IEnumerable
-            return type.AllInterfaces.Any(i => 
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericEnumerable) ||
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable));
+            foreach (var i in type.AllInterfaces)
+            {
+                if (SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericEnumerable) ||
+                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsNullableType(ISymbol member)
