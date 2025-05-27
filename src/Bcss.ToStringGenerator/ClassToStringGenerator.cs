@@ -10,8 +10,8 @@ namespace Bcss.ToStringGenerator
     [Generator]
     public class ClassToStringGenerator : IIncrementalGenerator
     {
-        private const string DefaultRedactionValue = "[REDACTED]";
-        private const string ConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
+        private const string HidePrivateMembersConfigurationKey = "build_property.ToStringGeneratorHidePrivateMembers";
+        private const string RedactedValueConfigurationKey = "build_property.ToStringGeneratorRedactedValue";
         
         private const string GenerateToStringAttributeName = "Bcss.ToStringGenerator.Attributes.GenerateToStringAttribute";
 
@@ -22,14 +22,14 @@ namespace Bcss.ToStringGenerator
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             GenerateMarkerAttributes(context);
-            var defaultRedactionConfig = GetDefaultRedactionConfigProvider(context);
+            var configOptions = GetToStringGeneratorConfigOptionsProvider(context);
             var typeDeclarations = GetTypeDeclarationsProvider(context);
-            var combined = CombineProviders(typeDeclarations, defaultRedactionConfig);
+            var combined = CombineProviders(typeDeclarations, configOptions);
             
             context.RegisterSourceOutput(combined,
                 (spc, tuple) =>
                 {
-                    Execute(spc, tuple.DefaultRedaction ?? DefaultRedactionValue, tuple.Types);
+                    Execute(spc, tuple.ConfigOptions!, tuple.Types);
                 });
         }
 
@@ -124,15 +124,33 @@ namespace Bcss.ToStringGenerator.Attributes
             });
         }
 
-        private static IncrementalValueProvider<string> GetDefaultRedactionConfigProvider(
+        private static IncrementalValueProvider<ToStringGeneratorConfigOptions> GetToStringGeneratorConfigOptionsProvider(
             IncrementalGeneratorInitializationContext context)
         {
             return context.AnalyzerConfigOptionsProvider
-                .Select((provider, _) => provider.GlobalOptions.TryGetValue(ConfigurationKey, out var value) ? value : DefaultRedactionValue)
+                .Select((provider, _) =>
+                {
+                    ToStringGeneratorConfigOptions config = new();
+                    if (provider.GlobalOptions.TryGetValue(RedactedValueConfigurationKey, out var redactionValue))
+                    {
+                        config.RedactionValue = redactionValue;
+                    }
+                    
+                    if (provider.GlobalOptions.TryGetValue(HidePrivateMembersConfigurationKey, out var hidePrivateMembers))
+                    {
+                        bool didParse = bool.TryParse(hidePrivateMembers, out bool parsedBool);
+                        if (didParse)
+                        {
+                            config.HidePrivateMembers = parsedBool;
+                        }
+                    }
+
+                    return config;
+                })
                 .WithTrackingName(TrackingNames.ReadConfig);
         }
 
-        private static IncrementalValuesProvider<ClassSymbolData?> GetTypeDeclarationsProvider(IncrementalGeneratorInitializationContext context)
+        private static IncrementalValuesProvider<ClassSymbolData> GetTypeDeclarationsProvider(IncrementalGeneratorInitializationContext context)
         {
             return context.SyntaxProvider
                 .ForAttributeWithMetadataName(
@@ -142,46 +160,38 @@ namespace Bcss.ToStringGenerator.Attributes
                 .WithTrackingName(TrackingNames.InitialExtraction);
         }
 
-        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData?> Types, string DefaultRedaction)> CombineProviders(
-            IncrementalValuesProvider<ClassSymbolData?> typeDeclarations,
-            IncrementalValueProvider<string> defaultRedactionConfig)
+        private static IncrementalValueProvider<(ImmutableArray<ClassSymbolData> Types, ToStringGeneratorConfigOptions ConfigOptions)> CombineProviders(
+            IncrementalValuesProvider<ClassSymbolData> typeDeclarationsProvider,
+            IncrementalValueProvider<ToStringGeneratorConfigOptions> configOptionsProvider)
         {
-            return typeDeclarations
+            return typeDeclarationsProvider
                 .Collect()
-                .Combine(defaultRedactionConfig)
+                .Combine(configOptionsProvider)
                 .WithTrackingName(TrackingNames.CombineProviders);
         }
 
-        private static void Execute(SourceProductionContext context, string defaultRedactionValue, ImmutableArray<ClassSymbolData?> classSymbolData)
+        private static void Execute(SourceProductionContext context, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, ImmutableArray<ClassSymbolData> classSymbolData)
         {
             foreach (var classData in classSymbolData)
             {
-                if (classData == null) continue;
+                context.CancellationToken.ThrowIfCancellationRequested();
 
-                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData.Value, defaultRedactionValue);
-                var fileName = $"{classData.Value.ClassName}.ToString.g.cs";
+                var sourceCode = ToStringGeneratorHelper.GenerateToStringMethod(classData, toStringGeneratorConfigOptions, context.CancellationToken);
+                var fileName = $"{classData.ClassName}.ToString.g.cs";
 
                 context.CancellationToken.ThrowIfCancellationRequested();
                 context.AddSource(fileName, sourceCode);
             }
         }
         
-        private static ClassSymbolData? GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
+        private static ClassSymbolData GetTypeWithGenerateToStringAttribute(GeneratorAttributeSyntaxContext ctx)
         {
-            var targetNode = ctx.Attributes
-                .Any(attr => attr.AttributeClass?.ToDisplayString() == GenerateToStringAttributeName)
-                ? ctx.TargetNode
-                : null;
+            var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(ctx.TargetNode) ?? throw new ArgumentException("Could not get symbol for target node.");
 
-            if (targetNode is null) return null;
-
-            var typeSymbol = ctx.SemanticModel.GetDeclaredSymbol(targetNode);
-            if (typeSymbol is null) return null;
-
-            string containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-            string classAccessibility = GetAccessibility(typeSymbol);
-            string className = typeSymbol.Name;
-            var memberSymbols = GetPublicMembers(typeSymbol);
+            var containingNamespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+            var classAccessibility = GetAccessibility(typeSymbol);
+            var className = typeSymbol.Name;
+            var memberSymbols = GetMemberSymbols(typeSymbol);
             var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
 
             return new ClassSymbolData(containingNamespace, classAccessibility, className, members);
@@ -189,22 +199,25 @@ namespace Bcss.ToStringGenerator.Attributes
 
         private static List<MemberSymbolData> GetMemberSymbolData(IEnumerable<ISymbol> memberSymbols, Compilation compilation)
         {
-            List<MemberSymbolData> result = [];
+            var result = new List<MemberSymbolData>();
 
             foreach (var memberSymbol in memberSymbols)
             {
+                var memberAccessibility = GetAccessibility(memberSymbol);
                 var memberType = GetMemberType(memberSymbol);
                 var (isSensitive, mask) = IsSensitive(memberSymbol);
                 
                 result.Add(new MemberSymbolData(
                     memberSymbol.Name,
+                    memberAccessibility,
                     IsDictionary(memberType, compilation),
                     IsEnumerable(memberType, compilation),
                     IsNullableType(memberSymbol),
                     isSensitive,
+                    memberSymbol.IsStatic,
                     mask));
             }
-
+            
             return result;
         }
         
@@ -253,14 +266,28 @@ namespace Bcss.ToStringGenerator.Attributes
                 }
             }
 
-            return (true, DefaultRedactionValue);
+            return (true, null);
         }
         
-        private static IEnumerable<ISymbol> GetPublicMembers(ISymbol typeSymbol)
+        private static IEnumerable<ISymbol> GetMemberSymbols(ISymbol typeSymbol)
         {
-            return ((INamespaceOrTypeSymbol)typeSymbol).GetMembers()
-                .Where(m => m.Kind is SymbolKind.Property or SymbolKind.Field &&
-                            m is { DeclaredAccessibility: Accessibility.Public, IsStatic: false });
+            List<ISymbol> result = [];
+            var membersForType = ((INamespaceOrTypeSymbol)typeSymbol).GetMembers();
+            foreach (var symbol in membersForType)
+            {
+                if (symbol.Kind == SymbolKind.Property)
+                {
+                    result.Add(symbol);
+                    continue;
+                }
+
+                if (symbol is IFieldSymbol { AssociatedSymbol: null, Kind: SymbolKind.Field })
+                {
+                    result.Add(symbol);
+                }
+            }
+
+            return result;
         }
         
         private static bool IsDictionary(ITypeSymbol type, Compilation compilation)
@@ -269,13 +296,20 @@ namespace Bcss.ToStringGenerator.Attributes
             var dictionaryType = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
             var dictionaryInterface = compilation.GetTypeByMetadataName("System.Collections.IDictionary");
             
-            if (dictionaryType == null || dictionaryInterface == null) 
+            if (dictionaryType == null || dictionaryInterface == null)
                 return false;
 
-            // Check if the type implements IEnumerable<T> or IEnumerable
-            return type.AllInterfaces.Any(i => 
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryType) ||
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryInterface));
+            // Check if the type implements Dictionary<T> or IDictionary
+            foreach (var i in type.AllInterfaces)
+            {
+                if (SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryType) ||
+                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, dictionaryInterface))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsEnumerable(ITypeSymbol type, Compilation compilation)
@@ -292,9 +326,16 @@ namespace Bcss.ToStringGenerator.Attributes
                 return false;
 
             // Check if the type implements IEnumerable<T> or IEnumerable
-            return type.AllInterfaces.Any(i => 
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericEnumerable) ||
-                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable));
+            foreach (var i in type.AllInterfaces)
+            {
+                if (SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericEnumerable) ||
+                    SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, nonGenericEnumerable))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsNullableType(ISymbol member)

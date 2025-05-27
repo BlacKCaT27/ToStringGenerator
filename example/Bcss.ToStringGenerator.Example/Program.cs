@@ -1,11 +1,17 @@
-﻿using Bcss.ToStringGenerator.Attributes;
+﻿using System.Diagnostics.CodeAnalysis;
+using Bcss.ToStringGenerator.Attributes;
+// ReSharper disable UnusedMember.Local
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Bcss.ToStringGenerator.Example
 {
+    [ExcludeFromCodeCoverage(Justification = "Example app")]
     [GenerateToString]
     public partial class User
     {
+        public string PublicField = "publicField";
+        
         public string? Username { get; set; }
         
         [SensitiveData] // Masks sensitive data - default value is '[REDACTED]'
@@ -17,11 +23,18 @@ namespace Bcss.ToStringGenerator.Example
         public List<string> Addresses { get; set; } = [];
     
         public Dictionary<string, string> Preferences {get; set; } = [];
+        
+        private string MyPrivateProperty { get; set; } = "privateProperty";
+
+#pragma warning disable CS0414 // Field is assigned but its value is never used
+        private string _myPrivateField = "privateField";
+#pragma warning restore CS0414 // Field is assigned but its value is never used
     }
 
+    [ExcludeFromCodeCoverage(Justification = "Example app")]
     class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
             var user = new User
             {

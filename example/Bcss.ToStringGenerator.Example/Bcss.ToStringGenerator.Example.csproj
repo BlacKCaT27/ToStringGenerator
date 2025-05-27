@@ -11,6 +11,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!--<ToStringGeneratorRedactedValue>CustomRedactionValue</ToStringGeneratorRedactedValue>-->
+    <!--<ToStringGeneratorHidePrivateMembers>false</ToStringGeneratorHidePrivateMembers>-->
     
     <!-- Uncomment this constants definition to disable automatic source generation of marker interfaces used by the source generator -->
     <!-- <DefineConstants>GENERATE_TO_STRING_EXCLUDE_GENERATED_ATTRIBUTES</DefineConstants> -->
@@ -19,6 +21,7 @@
   <!-- Because we directly reference the source generator instead of using the NuGet package, we have to expose this msbuild prop ourselves. -->
   <ItemGroup>
     <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
+    <CompilerVisibleProperty Include="ToStringGeneratorHidePrivateMembers" />
   </ItemGroup>
 
 </Project>
