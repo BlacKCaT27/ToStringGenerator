@@ -77,7 +77,7 @@ internal static class ToStringGeneratorHelper
         var firstMember = true;
         foreach (var member in members)
         {
-            if (member.MemberAccessibility == "private" && toStringGeneratorConfigOptions.HidePrivateMembers)
+            if (member.MemberAccessibility.Contains("private") && toStringGeneratorConfigOptions.HidePrivateMembers)
             {
                 firstMember = false;
                 continue;

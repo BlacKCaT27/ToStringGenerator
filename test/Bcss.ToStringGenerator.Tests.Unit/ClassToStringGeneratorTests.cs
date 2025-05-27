@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Bcss.ToStringGenerator.Attributes;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Bcss.ToStringGenerator.Tests.Unit
@@ -497,6 +499,46 @@ public partial class TestClass
             Assert.IsTrue(generatedCode.Contains("***SECRET***"), "Generated code should contain custom redaction value");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
         }
+        
+        [TestMethod]
+        public void GenerateToString_WithCustomRedactionValueInConfig_UsesCustomValue()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+
+[GenerateToString]
+public partial class TestClass
+{
+    public string Name { get; set; }
+    [SensitiveData]
+    public string Password { get; set; }
+    public int Age { get; set; }
+}";
+            var globalOptions = new Dictionary<string, string>
+            {
+                { "build_property.ToStringGeneratorRedactedValue", "***SECRET***" } // Simulating MSBuild property
+            };
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator)
+                .WithUpdatedAnalyzerConfigOptions(new TestAnalyzerConfigOptionsProvider(globalOptions));
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var generatedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClass.ToString.g.cs"));
+            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = generatedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Password = \")"), "Generated code should contain sensitive property name `Password`");
+            Assert.IsTrue(generatedCode.Contains("***SECRET***"), "Generated code should contain custom redaction value");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
+        }
 
         [TestMethod]
         public void ToString_WithEnumerable_FormatsCorrectly()
@@ -605,6 +647,59 @@ public partial class SensitiveCollectionsExample
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Secrets = \")"), "Generated code should contain property name `Secrets`");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"***\")"), "Generated code should contain custom redaction value");
         }
+        
+        [TestMethod]
+        public void GenerateToString_DoesNotOutputPrivateMembers_BasedOnConfig()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+
+[GenerateToString]
+public partial class TestClass
+{
+    public string Name;
+    private int Age;
+    internal int Age1;
+    protected int Age2;
+    protected internal int Age3;
+    private protected int Age4;
+}";
+
+            var globalOptions = new Dictionary<string, string>
+            {
+                { "build_property.ToStringGeneratorHidePrivateMembers", "true" } // Simulating MSBuild property
+            };
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator)
+                .WithUpdatedAnalyzerConfigOptions(new TestAnalyzerConfigOptionsProvider(globalOptions));
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var generatedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestClass.ToString.g.cs"));
+            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = generatedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` field");
+
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age1 = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorHidePrivateMembers is false.");
+        }
 
         private static CSharpCompilation CreateCompilation(string source)
         {
@@ -626,4 +721,42 @@ public partial class SensitiveCollectionsExample
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         }
     }
-} 
+    
+    internal class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        internal TestAnalyzerConfigOptionsProvider(Dictionary<string, string> globalOption)
+        {
+            GlobalOptions = new TestAnalyzerConfigOptions(globalOption);
+        }
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree)
+        {
+            return GlobalOptions;
+        }
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+        {
+            return GlobalOptions;
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions { get; }
+    }
+
+    internal class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        private readonly Dictionary<string, string> _globalOptions = [];
+
+        public TestAnalyzerConfigOptions(Dictionary<string, string> globalOption)
+        {
+            foreach (var (key, value) in globalOption)
+            {
+                _globalOptions.Add(key, value);
+            }
+        }
+
+        public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
+        {
+            return _globalOptions.TryGetValue(key, out value);
+        }
+    }
+}

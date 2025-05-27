@@ -207,7 +207,7 @@ namespace Bcss.ToStringGenerator.Attributes
 
         private static List<MemberSymbolData> GetMemberSymbolData(IEnumerable<ISymbol> memberSymbols, Compilation compilation)
         {
-            List<MemberSymbolData> result = [];
+            var result = new List<MemberSymbolData>();
 
             foreach (var memberSymbol in memberSymbols)
             {
@@ -225,7 +225,7 @@ namespace Bcss.ToStringGenerator.Attributes
                     memberSymbol.IsStatic,
                     mask));
             }
-
+            
             return result;
         }
         
