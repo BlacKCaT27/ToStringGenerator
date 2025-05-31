@@ -37,6 +37,8 @@ public partial class User
     public List<string> Addresses { get; set; } = [];
     
     public Dictionary<string, string> Preferences {get; set; } = [];
+    
+    private int _myPrivateValue = 42;
 }
 ```
 
@@ -56,6 +58,43 @@ Console.WriteLine(user.ToString()); // ToString() method automatically generated
 
 // Output:
 [User: Username = john.doe, Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = [{Color = Blue}, {Font = Arial}]
+```
+
+By default, private and private protected data members are not included in the generated output. If you'd like them to be included,
+the `GenerateToString` attribute exposes a flag to include them for the annotated class only.
+
+```csharp
+using Bcss.ToStringGenerator.Attributes;
+
+[GenerateToString(includePrivateDataMembers: true)]
+public partial class User
+{
+    public string Username { get; set; }
+
+    public List<string> Addresses { get; set; } = [];
+    
+    public Dictionary<string, string> Preferences {get; set; } = [];
+    
+    private int _myPrivateValue = 42;
+}
+```
+
+#### Example Output
+
+```csharp
+var user = new User
+{
+    Username = "john.doe",
+    Addresses = ["123 Main St, Apt 4B, New York, NY 10001"],
+    Preferences = new Dictionary<string, string>
+    {
+        {"Color", "Blue"}, {"Font", "Arial"}
+    }
+};
+Console.WriteLine(user.ToString()); // ToString() method automatically generated at compile time
+
+// Output:
+[User: Username = john.doe, Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = [{Color = Blue}, {Font = Arial}, myPrivateValue = 42]
 ```
 
 ### Handling Sensitive Data
@@ -110,14 +149,14 @@ You can also override the default value globally using the `ToStringGeneratorRed
 <ToStringGeneratorRedactedValue>[MyNewRedactionValue]</ToStringGeneratorRedactedValue>
 ```
 
-Whenever a masking value is not provided to `SensitiveData`, this property's value will be used. If not provided, the default value is `[Redacted`.]
+Whenever a masking value is not provided to `SensitiveData`, this property's value will be used. If not provided, the default value is `[Redacted]`.
 
-### ToStringGeneratorHidePrivateMembers
+### ToStringGeneratorIncludePrivateDataMembers
 By default, private and private protected members are not captured by the generated ToString() method.
-To ensure their inclusion in the output, set `ToStringGeneratorHidePrivateMembers` to `false`
+To ensure their inclusion in the output for all annotated classes in the project, set `ToStringGeneratorIncludePrivateDataMembers` to `true`.
 
 ```xml
-<ToStringGeneratorHidePrivateMembers>false</ToStringGeneratorHidePrivateMembers>
+<ToStringGeneratorIncludePrivateDataMembers>true</ToStringGeneratorIncludePrivateDataMembers>
 ```
 
 ## Attributes

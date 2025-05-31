@@ -4,8 +4,8 @@ namespace Bcss.ToStringGenerator;
 /// Class containing names for different stages of the ToString generator.
 /// </summary>
 /// <remarks>
-/// This class is also defined in `TestHelper`, as we don't want these values part of the public api,
-/// so it's marked internal here. Be sure to update TestHelper as well if new values are added here.
+/// This class is accessed reflectively within TestHelpers - do not rename, move, or remove
+/// without updating there as well. Only add public constant string FIELDS, not properties, to this class.
 /// </remarks>
 internal static class TrackingNames
 {

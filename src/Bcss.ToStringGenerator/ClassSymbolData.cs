@@ -9,7 +9,7 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
     public string ClassAccessibility { get; }
     public string ClassName { get; }
     public List<MemberSymbolData> Members { get; }
-    public bool? HidePrivateDataMembers { get; }
+    public bool? IncludePrivateDataMembers { get; }
 
     /// <summary>
     /// Instantiates a new instance of <see cref="ClassSymbolData"/>.
@@ -18,14 +18,15 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
     /// <param name="classAccessibility">The accessibility level of the class whose ToString method is to be generated.</param>
     /// <param name="className">The name of the class whose ToString method is to be generated.</param>
     /// <param name="members">A collection of <see cref="MemberSymbolData"/> containing information about each member to be recorded in the ToString method.</param>
-    /// <param name="hidePrivateDataMembers"></param>
-    public ClassSymbolData(string containingNamespace, string classAccessibility, string className, List<MemberSymbolData> members, bool? hidePrivateDataMembers)
+    /// <param name="includePrivateDataMembers">Whether to include private fields and properties in the generated output. If not set, the project-wide preference
+    /// will be used. Default is null. Project-wide default is false.</param>
+    public ClassSymbolData(string containingNamespace, string classAccessibility, string className, List<MemberSymbolData> members, bool? includePrivateDataMembers)
     {
         ContainingNamespace = containingNamespace;
         ClassAccessibility = classAccessibility;
         ClassName = className;
         Members = members;
-        HidePrivateDataMembers = hidePrivateDataMembers;
+        IncludePrivateDataMembers = includePrivateDataMembers;
     }
 
     public bool Equals(ClassSymbolData other)
@@ -34,7 +35,7 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
                ClassAccessibility == other.ClassAccessibility &&
                ClassName == other.ClassName &&
                Members.SequenceEqual(other.Members) &&
-               HidePrivateDataMembers == other.HidePrivateDataMembers;
+               IncludePrivateDataMembers == other.IncludePrivateDataMembers;
     }
 
     public override bool Equals(object? obj)
@@ -50,7 +51,7 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
             hash = hash * 23 + (ContainingNamespace?.GetHashCode() ?? 0);
             hash = hash * 23 + (ClassAccessibility?.GetHashCode() ?? 0);
             hash = hash * 23 + (ClassName?.GetHashCode() ?? 0);
-            hash = hash * 23 + HidePrivateDataMembers.GetHashCode();
+            hash = hash * 23 + IncludePrivateDataMembers.GetHashCode();
             foreach (var member in Members)
             {
                 hash = hash * 23 + member.GetHashCode();

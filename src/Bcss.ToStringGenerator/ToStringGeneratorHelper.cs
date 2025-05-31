@@ -87,13 +87,13 @@ internal static class ToStringGeneratorHelper
             cancellationToken.ThrowIfCancellationRequested();
             if (member.MemberAccessibility.Contains("private"))
             {
-                switch (classSymbolData.HidePrivateDataMembers)
+                switch (classSymbolData.IncludePrivateDataMembers)
                 {
                     // If the class-level attribute is set, honor it.
-                    case true:
-                    // If not, honor the global default unless the attribute-level config is set to false, in which case,
+                    case false:
+                    // If not, honor the global default unless the attribute-level config is set to true, in which case,
                     // include private data members for only this class.
-                    case null when toStringGeneratorConfigOptions.HidePrivateDataMembers:
+                    case null when toStringGeneratorConfigOptions.IncludePrivateDataMembers == false:
                         continue;
                 }
             }

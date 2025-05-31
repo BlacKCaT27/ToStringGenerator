@@ -58,7 +58,6 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <code>[className: dictionaryMember = [{key1 = value1}, {key2 = value2}] ... ]</code>
     /// <br />
     /// </summary>
-    /// <param name=""hidePrivateDataMembers"">If true, omit private fields and properties from the generated ToString() method. Include them if false. Default value is true.</param>
     /// <remarks>
     /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
     /// the project containing this attribute directly.</p>
@@ -72,10 +71,23 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <br />
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class GenerateToStringAttribute(bool hidePrivateDataMembers = true) : Attribute
+    public class GenerateToStringAttribute : Attribute
     {
+        /// <summary>
+        /// Whether to include private data members when generating ToString() methods. Default is false.
+        /// </summary>
+        public bool IncludePrivateDataMembers { get; }
+
+        /// <summary>
+        /// Instantiates a new instance of the <see cref=""GenerateToStringAttribute""/> class.
+        /// </summary>
+        /// <param name=""includePrivateDataMembers"">If true, include private fields and properties from the generated ToString() method. Default is false.</param>
+        public GenerateToStringAttribute(bool includePrivateDataMembers = false)
+        {
+            IncludePrivateDataMembers = includePrivateDataMembers;
+        }
     }
-}
+} 
 #endif
 
 #if !TO_STRING_GENERATOR_EXCLUDE_GENERATED_ATTRIBUTES
@@ -669,7 +681,7 @@ public partial class TestClass
 
             var globalOptions = new Dictionary<string, string>
             {
-                { "build_property.ToStringGeneratorHidePrivateMembers", "true" } // Simulating MSBuild property
+                { "build_property.ToStringGeneratorIncludePrivateDataMembers", "false" } // Simulating MSBuild property
             };
 
             var compilation = CreateCompilation(source);
@@ -689,17 +701,17 @@ public partial class TestClass
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name `Name`");
             Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` field");
 
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age1 = \")"), "Generated code should contain private field name `Age1` when ToStringGeneratorHidePrivateMembers is false.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age1 = \")"), "Generated code should contain private field name `Age1` when ToStringGeneratorIncludePrivateDataMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when ToStringGeneratorIncludePrivateDataMembers is false.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when ToStringGeneratorHidePrivateMembers is false.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when ToStringGeneratorIncludePrivateDataMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when ToStringGeneratorIncludePrivateDataMembers is false.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when ToStringGeneratorHidePrivateMembers is false.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when ToStringGeneratorIncludePrivateDataMembers is false.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when ToStringGeneratorIncludePrivateDataMembers is false.");
             
-            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when ToStringGeneratorHidePrivateMembers is false.");
-            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should not contain private field value `Age4` when ToStringGeneratorHidePrivateMembers is false.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when ToStringGeneratorIncludePrivateDataMembers is false.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should not contain private field value `Age4` when ToStringGeneratorIncludePrivateDataMembers is false.");
         }
         
         [TestMethod]
@@ -709,7 +721,7 @@ public partial class TestClass
             var source = @"
 using Bcss.ToStringGenerator.Attributes;
 
-[GenerateToString(hidePrivateDataMembers = false)]
+[GenerateToString(includePrivateDataMembers = true)]
 public partial class TestClass
 {
     public string Name;
@@ -722,7 +734,7 @@ public partial class TestClass
 
             var globalOptions = new Dictionary<string, string>
             {
-                { "build_property.ToStringGeneratorHidePrivateMembers", "true" } // Simulating MSBuild property which will be overridden
+                { "build_property.ToStringGeneratorIncludePrivateDataMembers", "false" } // Simulating MSBuild property which will be overridden
             };
 
             var compilation = CreateCompilation(source);
@@ -742,20 +754,20 @@ public partial class TestClass
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain field name `Name`");
             Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` field");
 
-            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should not contain private field name `Age` when hidePrivateDataMembers is true.");
-            Assert.IsFalse(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should not contain private field value `Age` when hidePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should not contain private field name `Age` when includePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should not contain private field value `Age` when includePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age1 = \")"), "Generated code should contain private field name `Age1` when hidePrivateDataMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when hidePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age1 = \")"), "Generated code should contain private field name `Age1` when includePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when includePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when hidePrivateDataMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when hidePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when includePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when includePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when hidePrivateDataMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when hidePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when includePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when includePrivateDataMembers is true.");
             
-            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when hidePrivateDataMembers is true.");
-            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should contain not private internal field value `Age4` when hidePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when includePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should contain not private internal field value `Age4` when includePrivateDataMembers is true.");
         }
         
         [TestMethod]
@@ -778,7 +790,7 @@ public partial class TestClass
 
             var globalOptions = new Dictionary<string, string>
             {
-                { "build_property.ToStringGeneratorHidePrivateMembers", "true" } // Simulating MSBuild property
+                { "build_property.ToStringGeneratorIncludePrivateDataMembers", "false" } // Simulating MSBuild property
             };
 
             var compilation = CreateCompilation(source);
@@ -798,20 +810,20 @@ public partial class TestClass
             Assert.IsFalse(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should not contain field name `Name`");
             Assert.IsFalse(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should not call ToString() on `Name` field");
 
-            Assert.IsFalse(generatedCode.Contains("sb.Append(\"Age = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorHidePrivateMembers is true.");
-            Assert.IsFalse(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorHidePrivateMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\"Age = \")"), "Generated code should not contain private field name `Age` when ToStringGeneratorIncludePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should not contain private field value `Age` when ToStringGeneratorIncludePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Age1 = \")"), "Generated code should contain private field name `Age1` when ToStringGeneratorHidePrivateMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when ToStringGeneratorHidePrivateMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Age1 = \")"), "Generated code should contain private field name `Age1` when ToStringGeneratorIncludePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age1.ToString())"), "Generated code should contain private field value `Age1` when ToStringGeneratorIncludePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when ToStringGeneratorHidePrivateMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when ToStringGeneratorHidePrivateMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age2 = \")"), "Generated code should contain private field name `Age2` when ToStringGeneratorIncludePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age2.ToString())"), "Generated code should contain private field value `Age2` when ToStringGeneratorIncludePrivateDataMembers is true.");
             
-            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when ToStringGeneratorHidePrivateMembers is true.");
-            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when ToStringGeneratorHidePrivateMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age3 = \")"), "Generated code should contain private field name `Age3` when ToStringGeneratorIncludePrivateDataMembers is true.");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age3.ToString())"), "Generated code should contain private field value `Age3` when ToStringGeneratorIncludePrivateDataMembers is true.");
             
-            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when ToStringGeneratorHidePrivateMembers is true.");
-            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should not contain private field value `Age4` when ToStringGeneratorHidePrivateMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(\", Age4 = \")"), "Generated code should not contain private field name `Age4` when ToStringGeneratorIncludePrivateDataMembers is true.");
+            Assert.IsFalse(generatedCode.Contains("sb.Append(Age4.ToString())"), "Generated code should not contain private field value `Age4` when ToStringGeneratorIncludePrivateDataMembers is true.");
         }
 
         private static CSharpCompilation CreateCompilation(string source)

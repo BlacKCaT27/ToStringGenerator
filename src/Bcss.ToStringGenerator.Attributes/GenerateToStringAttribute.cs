@@ -12,7 +12,6 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <code>[className: dictionaryMember = [{key1 = value1}, {key2 = value2}] ... ]</code>
     /// <br />
     /// </summary>
-    /// <param name="hidePrivateDataMembers">If true, omit private fields and properties from the generated ToString() method. Include them if false. Default value is true.</param>
     /// <remarks>
     /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
     /// the project containing this attribute directly.</p>
@@ -26,7 +25,20 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <br />
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class GenerateToStringAttribute(bool hidePrivateDataMembers = true) : Attribute
+    public class GenerateToStringAttribute : Attribute
     {
+        /// <summary>
+        /// Whether to include private data members when generating ToString() methods. Default is false.
+        /// </summary>
+        public bool IncludePrivateDataMembers { get; }
+
+        /// <summary>
+        /// Instantiates a new instance of the <see cref="GenerateToStringAttribute"/> class.
+        /// </summary>
+        /// <param name="includePrivateDataMembers">If true, include private fields and properties from the generated ToString() method. Default is false.</param>
+        public GenerateToStringAttribute(bool includePrivateDataMembers = false)
+        {
+            IncludePrivateDataMembers = includePrivateDataMembers;
+        }
     }
 } 

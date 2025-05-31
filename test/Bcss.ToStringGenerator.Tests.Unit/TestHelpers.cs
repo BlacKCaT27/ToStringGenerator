@@ -180,7 +180,7 @@ public static class TestHelpers
         var because = $"{stepName} shouldn't contain banned symbols";
         var visited = new HashSet<object>();
 
-        // Check all of the outputs - probably overkill, but why not
+        // Check all the outputs - probably overkill, but why not
         foreach (var (obj, _) in runStep.Outputs)
         {
             Visit(obj);
