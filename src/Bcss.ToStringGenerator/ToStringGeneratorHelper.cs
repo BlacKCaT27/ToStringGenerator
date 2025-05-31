@@ -70,7 +70,7 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine($"        sb.Append(\"[{classSymbolData.ClassName}: \");");
         sourceBuilder.AppendLine();
 
-        AppendMembers(sourceBuilder, classSymbolData.Members, toStringGeneratorConfigOptions, cancellationToken);
+        AppendMembers(sourceBuilder, classSymbolData, toStringGeneratorConfigOptions, cancellationToken);
 
         sourceBuilder.AppendLine();
         sourceBuilder.AppendLine("        sb.Append(\"]\");");
@@ -79,15 +79,23 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine("}");
     }
     
-    private static void AppendMembers(StringBuilder sourceBuilder, IEnumerable<MemberSymbolData> members, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, CancellationToken cancellationToken = default)
+    private static void AppendMembers(StringBuilder sourceBuilder, ClassSymbolData classSymbolData, ToStringGeneratorConfigOptions toStringGeneratorConfigOptions, CancellationToken cancellationToken = default)
     {
         var firstMember = true;
-        foreach (var member in members)
+        foreach (var member in classSymbolData.Members)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (member.MemberAccessibility.Contains("private") && toStringGeneratorConfigOptions.HidePrivateMembers)
+            if (member.MemberAccessibility.Contains("private"))
             {
-                continue;
+                switch (classSymbolData.HidePrivateDataMembers)
+                {
+                    // If the class-level attribute is set, honor it.
+                    case true:
+                    // If not, honor the global default unless the attribute-level config is set to false, in which case,
+                    // include private data members for only this class.
+                    case null when toStringGeneratorConfigOptions.HidePrivateDataMembers:
+                        continue;
+                }
             }
 
             var memberName = member.MemberName;

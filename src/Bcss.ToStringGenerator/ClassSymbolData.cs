@@ -9,6 +9,7 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
     public string ClassAccessibility { get; }
     public string ClassName { get; }
     public List<MemberSymbolData> Members { get; }
+    public bool? HidePrivateDataMembers { get; }
 
     /// <summary>
     /// Instantiates a new instance of <see cref="ClassSymbolData"/>.
@@ -17,12 +18,14 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
     /// <param name="classAccessibility">The accessibility level of the class whose ToString method is to be generated.</param>
     /// <param name="className">The name of the class whose ToString method is to be generated.</param>
     /// <param name="members">A collection of <see cref="MemberSymbolData"/> containing information about each member to be recorded in the ToString method.</param>
-    public ClassSymbolData(string containingNamespace, string classAccessibility, string className, List<MemberSymbolData> members)
+    /// <param name="hidePrivateDataMembers"></param>
+    public ClassSymbolData(string containingNamespace, string classAccessibility, string className, List<MemberSymbolData> members, bool? hidePrivateDataMembers)
     {
         ContainingNamespace = containingNamespace;
         ClassAccessibility = classAccessibility;
         ClassName = className;
         Members = members;
+        HidePrivateDataMembers = hidePrivateDataMembers;
     }
 
     public bool Equals(ClassSymbolData other)
@@ -30,7 +33,8 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
         return ContainingNamespace == other.ContainingNamespace &&
                ClassAccessibility == other.ClassAccessibility &&
                ClassName == other.ClassName &&
-               Members.SequenceEqual(other.Members);
+               Members.SequenceEqual(other.Members) &&
+               HidePrivateDataMembers == other.HidePrivateDataMembers;
     }
 
     public override bool Equals(object? obj)
@@ -46,6 +50,7 @@ internal readonly struct ClassSymbolData : IEquatable<ClassSymbolData>
             hash = hash * 23 + (ContainingNamespace?.GetHashCode() ?? 0);
             hash = hash * 23 + (ClassAccessibility?.GetHashCode() ?? 0);
             hash = hash * 23 + (ClassName?.GetHashCode() ?? 0);
+            hash = hash * 23 + HidePrivateDataMembers.GetHashCode();
             foreach (var member in Members)
             {
                 hash = hash * 23 + member.GetHashCode();

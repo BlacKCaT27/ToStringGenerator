@@ -55,6 +55,7 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <code>[className: dictionaryMember = [{key1 = value1}, {key2 = value2}] ... ]</code>
     /// <br />
     /// </summary>
+    /// <param name=""hidePrivateDataMembers"">If true, omit private fields and properties from the generated ToString() method. Include them if false. Default value is true.</param>
     /// <remarks>
     /// <p>This attribute will be automatically loaded at compile time by the ToString source generator. You should not need to reference
     /// the project containing this attribute directly.</p>
@@ -68,7 +69,7 @@ namespace Bcss.ToStringGenerator.Attributes
     /// <br />
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class GenerateToStringAttribute : Attribute
+    public class GenerateToStringAttribute(bool hidePrivateDataMembers = true) : Attribute
     {
     }
 }
@@ -141,7 +142,7 @@ namespace Bcss.ToStringGenerator.Attributes
                         bool didParse = bool.TryParse(hidePrivateMembers, out bool parsedBool);
                         if (didParse)
                         {
-                            config.HidePrivateMembers = parsedBool;
+                            config.HidePrivateDataMembers = parsedBool;
                         }
                     }
 
@@ -193,8 +194,42 @@ namespace Bcss.ToStringGenerator.Attributes
             var className = typeSymbol.Name;
             var memberSymbols = GetMemberSymbols(typeSymbol);
             var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
+            var hidePrivateDataMembers = GetHidePrivateDataMembers(ctx);
 
-            return new ClassSymbolData(containingNamespace, classAccessibility, className, members);
+            return new ClassSymbolData(containingNamespace, classAccessibility, className, members, hidePrivateDataMembers);
+        }
+
+        private static bool? GetHidePrivateDataMembers(GeneratorAttributeSyntaxContext ctx)
+        {
+            AttributeData? attributeData = null;
+
+            foreach (var attr in ctx.Attributes)
+            {
+                if (attr.AttributeClass?.ToDisplayString() == GenerateToStringAttributeName)
+                {
+                    attributeData = attr;
+                    break;
+                } 
+            }
+            
+            if (attributeData is null)
+            {
+                return null;
+            }
+
+            // If the attribute has no arguments, the default value is used.
+            if (attributeData.NamedArguments.Any())
+            {
+                foreach (var namedArg in attributeData.NamedArguments)
+                {
+                    if (namedArg.Key == "hidePrivateDataMembers")
+                    {
+                        return (bool?)namedArg.Value.Value;
+                    }
+                }
+            }
+
+            return null;
         }
 
         private static List<MemberSymbolData> GetMemberSymbolData(IEnumerable<ISymbol> memberSymbols, Compilation compilation)

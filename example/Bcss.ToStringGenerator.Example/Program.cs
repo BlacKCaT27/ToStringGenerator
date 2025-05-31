@@ -53,3 +53,8 @@ namespace Bcss.ToStringGenerator.Example
         }
     }
 }
+
+
+
+
+// todo: finish fixing test, push change to feature branch. Move to main. Create develop branch. reset head of main to before adding data members. rebase feature branch off of develop. Then you can rename all the `hidePrivateDataMembers` and invert the default of true to false.

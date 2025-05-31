@@ -100,13 +100,25 @@ Console.WriteLine(user.ToString());
 // [User: Username = john.doe, Password = [REDACTED], CreditCardNumber = ***, Addresses = [123 Main St, Apt 4B, New York, NY 10001], Preferences = [{Color = Blue}, {Font = Arial}]
 ```
 
+
+## Build Properties
+
+### ToStringGeneratorRedactedValue
 You can also override the default value globally using the `ToStringGeneratorRedactedValue` msbuild property:
 
 ```xml
 <ToStringGeneratorRedactedValue>[MyNewRedactionValue]</ToStringGeneratorRedactedValue>
 ```
 
-Whenever a masking value is not provided to `SensitiveData`, this property's value will be used instead.
+Whenever a masking value is not provided to `SensitiveData`, this property's value will be used. If not provided, the default value is `[Redacted`.]
+
+### ToStringGeneratorHidePrivateMembers
+By default, private and private protected members are not captured by the generated ToString() method.
+To ensure their inclusion in the output, set `ToStringGeneratorHidePrivateMembers` to `false`
+
+```xml
+<ToStringGeneratorHidePrivateMembers>false</ToStringGeneratorHidePrivateMembers>
+```
 
 ## Attributes
 The `GenerateToString` and `SensitiveData` attributes are injected into your project by the source generator by default.
