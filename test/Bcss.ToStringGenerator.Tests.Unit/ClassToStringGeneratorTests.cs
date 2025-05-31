@@ -193,7 +193,7 @@ public partial class SensitiveCollectionsExample
         }
         
         [TestMethod]
-        public void GenerateToString_WithPublicProperties_GeneratesCorrectToString()
+        public void GenerateToString_WithPublicProperties_GeneratesCorrectToStringForClass()
         {
             // Arrange
             var source = @"
@@ -227,6 +227,43 @@ public class NoAttr2{}";
             var generatedCode = generatedSyntax.ToString();
             Assert.IsTrue(generatedCode.Contains("public override string ToString()"), "Generated code should contain ToString method");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"[TestClass: \")"), "Generated code should contain class name");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(Age.ToString())"), "Generated code should  call ToString() on `Age` property");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"]\")"), "Generated code should contain closing bracket");
+        }
+        
+        [TestMethod]
+        public void GenerateToString_WithPublicProperties_GeneratesCorrectToStringForStruct()
+        {
+            // Arrange
+            var source = @"
+using Bcss.ToStringGenerator.Attributes;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+[GenerateToString]
+public partial struct TestStruct
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}";
+
+            var compilation = CreateCompilation(source);
+            var generator = new ClassToStringGenerator();
+            var driver = CSharpGeneratorDriver.Create(generator);
+
+            // Act
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+            // Assert
+            var generatedSyntax = outputCompilation.SyntaxTrees
+                .FirstOrDefault(st => st.FilePath.EndsWith("TestStruct.ToString.g.cs"));
+            Assert.IsNotNull(generatedSyntax, "Generated syntax tree should not be null");
+
+            var generatedCode = generatedSyntax.ToString();
+            Assert.IsTrue(generatedCode.Contains("public override string ToString()"), "Generated code should contain ToString method");
+            Assert.IsTrue(generatedCode.Contains("sb.Append(\"[TestStruct: \")"), "Generated code should contain class name");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\"Name = \")"), "Generated code should contain property name `Name`");
             Assert.IsTrue(generatedCode.Contains("sb.Append(Name.ToString())"), "Generated code should call ToString() on `Name` property");
             Assert.IsTrue(generatedCode.Contains("sb.Append(\", Age = \")"), "Generated code should contain property name `Age`");

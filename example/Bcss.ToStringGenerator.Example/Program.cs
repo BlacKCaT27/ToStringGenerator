@@ -6,6 +6,15 @@ using Bcss.ToStringGenerator.Attributes;
 
 namespace Bcss.ToStringGenerator.Example
 {
+    [GenerateToString]
+    public partial struct Test
+    {
+        public Test()
+        {
+        }
+
+        public string Data { get; set; } = "testData";
+    }
     [ExcludeFromCodeCoverage(Justification = "Example app")]
     [GenerateToString(includePrivateDataMembers: true)]
     public partial class User
@@ -48,7 +57,9 @@ namespace Bcss.ToStringGenerator.Example
             };
             Console.WriteLine("User details:");
             Console.WriteLine(user.ToString());
-            
+
+            Console.WriteLine("Struct test:");
+            Console.WriteLine(new Test().ToString());
         }
     }
 }

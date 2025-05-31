@@ -28,7 +28,7 @@ internal static class ToStringGeneratorHelper
     {
         var sourceBuilder = new StringBuilder();
         AddUsingsAndNamespace(sourceBuilder, classSymbolData.ContainingNamespace, cancellationToken);
-        AddTypeDeclaration(sourceBuilder, classSymbolData.ClassAccessibility, classSymbolData.ClassName, cancellationToken);
+        AddTypeDeclaration(sourceBuilder, classSymbolData.ClassAccessibility, classSymbolData.ClassName, classSymbolData.IsStruct, cancellationToken);
         AddToStringMethod(sourceBuilder, classSymbolData, toStringGeneratorConfigOptions, cancellationToken);
         return sourceBuilder.ToString();
     }
@@ -53,14 +53,15 @@ internal static class ToStringGeneratorHelper
         sourceBuilder.AppendLine();
     }
 
-    private static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className, CancellationToken cancellationToken = default)
+    private static void AddTypeDeclaration(StringBuilder sourceBuilder, string classAccessibility, string className, bool isStruct, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        string objType = isStruct ? "struct" : "class";
         sourceBuilder.AppendLine("/// <summary>");
         sourceBuilder.AppendLine($"/// A partial implementation of {className} containing a generated ToString() implementation.");
         sourceBuilder.AppendLine("/// </summary>");
-        sourceBuilder.AppendLine($"{classAccessibility} partial class {className}");
+        sourceBuilder.AppendLine($"{classAccessibility} partial {objType} {className}");
         sourceBuilder.AppendLine("{");
     }
 

@@ -123,18 +123,14 @@ namespace Bcss.ToStringGenerator.Attributes
                     ToStringGeneratorConfigOptions config = new();
                     if (provider.GlobalOptions.TryGetValue(RedactedValueConfigurationKey, out var redactionValue))
                     {
-                        if (redactionValue is not null)
-                        {
-                            config.RedactionValue = redactionValue;
-                        }
+                        config.RedactionValue = redactionValue;
                     }
                     
                     if (provider.GlobalOptions.TryGetValue(IncludePrivateDataMembersConfigurationKey, out var includePrivateDataMembers))
                     {
-                        bool didParse = bool.TryParse(includePrivateDataMembers, out bool parsedBool);
-                        if (didParse)
+                        if (bool.TryParse(includePrivateDataMembers, out var configIncludePrivateDataMembers))
                         {
-                            config.IncludePrivateDataMembers = parsedBool;
+                            config.IncludePrivateDataMembers = configIncludePrivateDataMembers;
                         }
                     }
 
@@ -148,7 +144,7 @@ namespace Bcss.ToStringGenerator.Attributes
             return context.SyntaxProvider
                 .ForAttributeWithMetadataName(
                     GenerateToStringAttributeName,
-                    predicate: (node, _) => node is ClassDeclarationSyntax,
+                    predicate: (node, _) => node is ClassDeclarationSyntax or StructDeclarationSyntax,
                     transform: (ctx, _) => GetTypeWithGenerateToStringAttribute(ctx))
                 .WithTrackingName(TrackingNames.InitialExtraction);
         }
@@ -187,8 +183,9 @@ namespace Bcss.ToStringGenerator.Attributes
             var memberSymbols = GetMemberSymbols(typeSymbol);
             var members = GetMemberSymbolData(memberSymbols, ctx.SemanticModel.Compilation);
             var includePrivateDataMembers = GetIncludePrivateDataMembersFlag(typeSymbol);
+            var isStruct = ((INamedTypeSymbol)typeSymbol).TypeKind == TypeKind.Struct;
 
-            return new ClassSymbolData(containingNamespace, classAccessibility, className, members, includePrivateDataMembers);
+            return new ClassSymbolData(containingNamespace, classAccessibility, className, members, isStruct, includePrivateDataMembers);
         }
 
         private static bool? GetIncludePrivateDataMembersFlag(ISymbol symbol)
