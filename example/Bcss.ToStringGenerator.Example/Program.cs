@@ -11,7 +11,6 @@ namespace Bcss.ToStringGenerator.Example
     public partial class User
     {
         public string PublicField = "publicField";
-        
         public string? Username { get; set; }
         
         [SensitiveData] // Masks sensitive data - default value is '[REDACTED]'

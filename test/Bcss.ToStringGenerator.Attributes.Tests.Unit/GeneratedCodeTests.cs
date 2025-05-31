@@ -16,7 +16,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
         /// Sanity check test to ensure that the generator is actually generating code.
         /// Relies on a specific path to another test project, may need tweaking/removal/ignoring in builds.
         /// </summary>
-        //[Ignore("Fails in CI due to local-dev-specific paths. Only run locally to verify generator is working as expected.")]
+        [Ignore("Fails in CI due to local-dev-specific paths. Only run locally to verify that the source generator is working as expected.")]
         [TestMethod]
         public void _LOCAL_DEBUG_Generator_ProducesGeneratedCode()
         {
@@ -60,7 +60,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = True, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = [SubClass: IsActive = False], Numbers = [], Scores = [], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = True, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = [SubClass: IsActive = False, IsPrivate = False], UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [], Scores = [], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -78,7 +78,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [], Scores = [], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [], Scores = [], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -96,7 +96,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [], Scores = [], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [], Scores = [], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -118,7 +118,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [1, 2, 3], Scores = [{Alice, 100}, {Bob, 90}], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [1, 2, 3], Scores = [{Alice, 100}, {Bob, 90}], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -136,7 +136,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [], Scores = [], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [], Scores = [], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -158,7 +158,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = [1, 2, 3], Scores = [], Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = John Doe, Age = 0, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = [1, 2, 3], Scores = [], Secrets = ***]", result);
         }
 
         [TestMethod]
@@ -177,7 +177,7 @@ namespace Bcss.ToStringGenerator.Attributes.Tests.Unit
             var result = testClass.ToString();
 
             // Assert
-            Assert.AreEqual("[GenerateToStringTestClass: Name = null, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, Numbers = null, Scores = null, Secrets = ***]", result);
+            Assert.AreEqual("[GenerateToStringTestClass: Name = null, Age = 30, IsActive = False, Password = [REDACTED], SecretKey = ***SECRET***, SubClass = null, UnnamedArgSubClass = [UnnamedArgSubClass: IsActive = False, IsPrivate = False], Numbers = null, Scores = null, Secrets = ***]", result);
         }
     }
 }

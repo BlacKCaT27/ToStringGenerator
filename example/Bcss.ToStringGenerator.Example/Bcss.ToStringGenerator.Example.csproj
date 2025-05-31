@@ -20,8 +20,8 @@
 
   <!-- Because we directly reference the source generator instead of using the NuGet package, we have to expose this msbuild prop ourselves. -->
   <ItemGroup>
-    <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
-    <CompilerVisibleProperty Include="ToStringGeneratorIncludePrivateDataMembers" />
+    <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" DefaultValue="[REDACTED]" />
+    <CompilerVisibleProperty Include="ToStringGeneratorIncludePrivateDataMembers" DefaultValue="false" />
   </ItemGroup>
 
 </Project>
