@@ -18,6 +18,8 @@ public partial class GenerateToStringTestClass
     public string? SecretKey { get; set; }
     
     public SubClass? SubClass { get; set; }
+    
+    public UnnamedArgSubClass UnnamedArgSubClass { get; set; } = new();
 
     public List<int>? Numbers { get; set; } = [];
     

@@ -12,7 +12,7 @@ public class ToStringGeneratorConfigOptions
 
     /// <summary>
     /// Whether private fields and properties should be hidden from the ToString output.
-    /// Default is true.
+    /// Default is false.
     /// </summary>
-    public bool HidePrivateMembers { get; set; } = true;
+    public bool IncludePrivateDataMembers { get; set; }
 }

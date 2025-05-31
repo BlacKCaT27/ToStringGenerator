@@ -1,9 +1,9 @@
-﻿using Bcss.ToStringGenerator.Attributes;
+using Bcss.ToStringGenerator.Attributes;
 
 namespace Bcss.ToStringGenerator.TestData;
 
-[GenerateToString(includePrivateDataMembers: true)]
-public partial class SubClass
+[GenerateToString(true)]
+public partial class UnnamedArgSubClass
 {
     public bool IsActive { get; set; }
     

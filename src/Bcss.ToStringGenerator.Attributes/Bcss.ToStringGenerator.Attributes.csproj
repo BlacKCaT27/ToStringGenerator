@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <WarningsAsErrors>true</WarningsAsErrors>
-    <NoWarn>CS0618</NoWarn>
+    <NoWarn>CS0618, CS9113</NoWarn> <!-- CS0618 - deprecation warnings, CS9113 - Unused warnings (classes are not referenced directly typically) -->
     <PackageId>Bcss.ToStringGenerator.Attributes</PackageId>
   </PropertyGroup>
 

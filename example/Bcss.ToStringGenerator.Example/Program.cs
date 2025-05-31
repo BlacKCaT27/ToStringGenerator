@@ -7,11 +7,10 @@ using Bcss.ToStringGenerator.Attributes;
 namespace Bcss.ToStringGenerator.Example
 {
     [ExcludeFromCodeCoverage(Justification = "Example app")]
-    [GenerateToString]
+    [GenerateToString(includePrivateDataMembers: true)]
     public partial class User
     {
         public string PublicField = "publicField";
-        
         public string? Username { get; set; }
         
         [SensitiveData] // Masks sensitive data - default value is '[REDACTED]'

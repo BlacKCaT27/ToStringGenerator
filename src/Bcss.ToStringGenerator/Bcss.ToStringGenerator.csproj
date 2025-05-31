@@ -16,10 +16,6 @@
     <IncludeBuildOutput>true</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
   </PropertyGroup>
-
-  <PropertyGroup Label="Config">
-    <ToStringGeneratorRedactedValue>*****</ToStringGeneratorRedactedValue>
-  </PropertyGroup>
   
   <ItemGroup Label="Deps">
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" Version="4.13.0" />
@@ -30,8 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" />
-    <CompilerVisibleProperty Include="ToStringGeneratorHidePrivateMembers" />
+    <CompilerVisibleProperty Include="ToStringGeneratorRedactedValue" DefaultValue="[REDACTED]" />
+    <CompilerVisibleProperty Include="ToStringGeneratorIncludePrivateDataMembers" DefaultValue="false" />
 
     <!-- Reference the attributes project from the generator to compile against them -->
     <ProjectReference Include="..\Bcss.ToStringGenerator.Attributes\Bcss.ToStringGenerator.Attributes.csproj" PrivateAssets="all" />

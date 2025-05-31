@@ -14,6 +14,17 @@ internal readonly struct MemberSymbolData : IEquatable<MemberSymbolData>
     public bool IsStatic { get; }
     public string? Mask { get; }
 
+    /// <summary>
+    /// Instantiates a new instance of <see cref="MemberSymbolData"/>.
+    /// </summary>
+    /// <param name="memberName">The name of the member as it appears in the code.</param>
+    /// <param name="memberAccessibility">The access level of the member (private, public, etc.).</param>
+    /// <param name="isDictionary">True if the data member represents an implementation of IDictionary or IDictionaryT1,T2, false otherwise.</param>
+    /// <param name="isEnumerable">True if the data member represents an implementation of IENumerable or IEnumerableT, false otherwise.</param>
+    /// <param name="isNullableType">True if this data member represents a nullable type, false otherwise.</param>
+    /// <param name="isSensitive">True if this data member was annotated with the `SensitiveDataAttribute`, false otherwise.</param>
+    /// <param name="isStatic">True if this data member is static, false otherwise.</param>
+    /// <param name="mask">If set, and `isSensitive` is true, this value will be used in place of the data members actual value in the generated ToString method.</param>
     public MemberSymbolData(
         string memberName,
         string memberAccessibility,
