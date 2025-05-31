@@ -4,7 +4,7 @@ A C# source generator that automatically creates customizable `ToString()` imple
 
 ## Features
 
-- 🚀 Automatic `ToString()` generation using source generators
+- 🚀 Automatic `ToString()` generation using source generators for classes and structs
 - 🔒 Built-in support for masking sensitive data
 - 📦 Works with any type including collections, dictionaries, and nullable types
 - 🎯 Zero runtime overhead—all code is generated at compile time
